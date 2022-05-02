@@ -1,0 +1,50 @@
+# Configuration of workflows
+
+log_level: debug
+#log_level: info
+
+# Outbound means files that arrive locally that are to be sent to S3, with or without
+# pre-processing being applied. 
+outbound:
+  - name: KSK1
+    description: Kasikorn Main Company Account
+    sensitive: false
+    source: "/home/rossg/Downloads/bank-statements/kasikorn-rossgolderltd-*"
+    destination: "s3://bank-statements-602191105086/KSK1/"
+    process_with: somebinary
+
+  - name: KSK2
+    description: Kasikorn Credit Card Account
+    source: "/home/rossg/Downloads/bank-statements/kasikorn-rasamee-*"
+    destination: "s3://bank-statements-602191105086/KSK2"
+    sensitive: false
+
+  - name: SCB1
+    description: Siam Commercial Electric Bill Account
+    source: "/home/rossg/Downloads/bank-statements/scb-*"
+    destination: "s3://bank-statements-602191105086/SCB1/"
+    sensitive: false
+
+  - name: KTB1
+    description: Krung Thai Main Family Account
+    source: "/home/rossg/Downloads/bank-statements/ktb-*"
+    destination: "s3://bank-statements-602191105086/KTB1/"
+    sensitive: false
+
+# Inbound means files that should be retrieved from S3 to the local machine when we
+# receive an SQS notification that a new file has been deposited.
+inbound:
+  - name: TEST1
+    description: Dummy Inbound Workflow
+    source: "s3://bank-statements-602191105086/"
+    destination: "/tmp/s3-sync-inbound"
+
+notifications:
+  - name: Discord
+    method: discord
+    url: https://discordapp...
+    
+  - name: Slack
+    method: slack
+    url: https://slack...
+    
