@@ -1,59 +1,28 @@
 package main
 
 import (
-  "os"
-  "fmt"
-	"io/ioutil"
+	"context"
+	"fmt"
 	"net/url"
+	"strings"
+
+	// "net/url"
+	"os"
 	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
-
-	"gopkg.in/yaml.v2"
 
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/ryanuber/go-glob"
 
-  "github.com/aws/aws-sdk-go/aws"
-  "github.com/aws/aws-sdk-go/aws/session"
-  "github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
-
-var config Config
-
-type Config struct {
-	LogLevel string `yaml:"log_level"`
-	LogJSON  bool   `yaml:"log_json"`
-	Outbound []struct {
-		Name        string `yaml:"name"`
-		Description string `yaml:"description"`
-		Sensitive   bool   `yaml:"sensitive"`
-		Source      string `yaml:"source"`
-		Destination string `yaml:"destination"`
-		ProcessWith string `yaml:"process_with,omitempty"`
-	} `yaml:"outbound"`
-	Inbound []struct {
-		Name        string `yaml:"name"`
-		Description string `yaml:"description"`
-		Source      string `yaml:"source"`
-		Destination string `yaml:"destination"`
-	} `yaml:"inbound"`
-	Notifications []struct {
-		Name   string `yaml:"name"`
-		Method string `yaml:"method"`
-		URL    string `yaml:"url"`
-	} `yaml:"notifications"`
-}
 
 func main() {
 	// Read YAML config file
-	filename, _ := filepath.Abs("./config.yaml")
-	yamlFile, err := ioutil.ReadFile(filename)
-	if err != nil {
-		panic(err)
-	}
-	err = yaml.Unmarshal(yamlFile, &config)
+	err := readConfig("./config.yaml")
 	if err != nil {
 		panic(err)
 	}
@@ -78,20 +47,13 @@ func main() {
 		log.SetFormatter(&log.JSONFormatter{})
 	}
 
-  // Configure AWS connections
-  var awsConfig *aws.Config = &aws.Config{
-    Region: aws.String("ap-southeast-1"),
-  }
-  sess := session.Must(session.NewSession(awsConfig))
-  uploader := s3manager.NewUploader(sess)
-
 	// Channel should respond by checking whether active watchers still exist
 	watchers := []fsnotify.Watcher{}
 
 	// Stops the program from exiting prematurely
 	done := make(chan bool)
 
-	// Set up watcher for each source
+	// Set up watcher for each outbound source
 	for i := 0; i < len(config.Outbound); i++ {
 		o := config.Outbound[i]
 		lf := log.Fields{
@@ -147,56 +109,112 @@ func main() {
 						continue
 					}
 
-					// Open the file and prepare to reads it
-          f, err := os.Open(event.Name)
-					if o.ProcessWith != "" {
-						if err != nil {
-              log.WithFields(lf).WithFields(log.Fields{
-                "name": event.Name,
-                "op":   event.Op,
-              }).Error(fmt.Printf("failed to open file %q, %v", filename, err))
-							return
-						}
-          }
-          defer f.Close()
-          
-          // [TODO] If we need to stream to a processor, do so here
-          if o.ProcessWith != "" {
-            log.WithFields(lf).WithFields(log.Fields{
-              "name": event.Name,
-              "op":   event.Op,
-            }).Error("NOT IMPLEMENTED")
-            return
-          }
+					// Open the file and prepare to read it
+					f, err := os.Open(event.Name)
+					if err != nil {
+						log.WithFields(lf).WithFields(log.Fields{
+							"name": event.Name,
+							"op":   event.Op,
+						}).Error(fmt.Printf("failed to open file %q, %v", filename, err))
+						return
+					}
+					defer f.Close()
+
+					// [IGNORE THIS FOR NOW] If we need to stream to a processor, do so here
+					// var p io.Writer = bufio.NewWriterSize(f, 1024)
+					// if o.ProcessWith != "" {
+					// 	cmd := exec.Command(o.ProcessWith)
+					// 	cmd.Stdin = f
+					// 	//stdout, err := cmd.Output()
+					// 	cmd.Stdout = p
+					// 	err := cmd.Start()
+					// 	if err != nil {
+					// 		// Handle error
+					// 		log.WithFields(lf).WithFields(log.Fields{
+					// 			"name":   event.Name,
+					// 			"op":     event.Op,
+					// 			"parser": o.ProcessWith,
+					// 		}).Error("Parser error: ", err)
+					// 		return
+					// 	}
+					// 	// Report success
+					// 	log.WithFields(lf).WithFields(log.Fields{
+					// 		"name":   event.Name,
+					// 		"op":     event.Op,
+					// 		"parser": o.ProcessWith,
+					// 	}).Error("Parsed successfully")
+
+					// } else {
+					// 	// Pass through unprocessed
+					// 	p = f
+					// }
+					//p.Flush()
+
+					// Create a buffered reader
 
 					// Stream output from file/processor to S3
 					u, err := url.Parse(o.Destination)
-					awsBucket := u.Hostname()
-					awsFileKey := u.Path + "/" + filename
+					endpoint := u.Hostname()
+					tokens := strings.Split(u.Path, "/")
+					if len(tokens) < 2 {
+						log.WithFields(lf).Error("Invalid S3 path: ", u.Path)
+						return
+					}
+					awsBucket := tokens[1]
+					awsFileKey := strings.Join(tokens[2:], "/") + "/" + filename
 					log.WithFields(lf).WithFields(log.Fields{
 						"name":       event.Name,
+						"endpoint":   endpoint,
 						"awsBucket":  awsBucket,
 						"awsFileKey": awsFileKey,
-					}).Info("sending to S3")
-					result, err := uploader.Upload(&s3manager.UploadInput{
-						Bucket: aws.String(awsBucket),
-						Key:    aws.String(awsFileKey),
-						Body:   f,
+					}).Debug("uploading to bucket")
+
+					// Determine remote to use to create a new MinIO client
+					creds := credentials.Credentials{}
+					credsFound := false
+					for _, remote := range config.Remotes {
+						if remote.Endpoint == endpoint {
+							creds = *credentials.NewStaticV4(remote.AccessKey, remote.SecretKey, "")
+							credsFound = true
+						}
+					}
+					if !credsFound {
+						log.Fatal("No credentials found")
+					}
+					mc, err := minio.New(endpoint, &minio.Options{
+						Creds:  &creds,
+						Secure: true,
 					})
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					// Push object to bucket
+					fs, _ := f.Stat()
 					if err != nil {
 						log.WithFields(lf).WithFields(log.Fields{
 							"name":       event.Name,
 							"awsBucket":  awsBucket,
 							"awsFileKey": awsFileKey,
-              "result":    result,
-						}).Error("failed to upload file to S3")
+						}).Error("unable to query file size: ", err)
+						return
+					}
+					ctx := context.TODO()
+					_, err = mc.PutObject(ctx, awsBucket, awsFileKey, f, fs.Size(), minio.PutObjectOptions{})
+					if err != nil {
+						log.WithFields(lf).WithFields(log.Fields{
+							"name":       event.Name,
+							"awsBucket":  awsBucket,
+							"awsFileKey": awsFileKey,
+						}).Error("failed to upload file to S3: ", err)
 						return
 					}
 					log.WithFields(lf).WithFields(log.Fields{
 						"name":       event.Name,
 						"awsBucket":  awsBucket,
 						"awsFileKey": awsFileKey,
-					}).Info("failed uploaded to S3")
+						"size":       fs.Size(),
+					}).Info("uploaded to S3")
 
 				case err, ok := <-watcher.Errors:
 					if !ok {
