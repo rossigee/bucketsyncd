@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"flag"
+
 	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
 
@@ -25,8 +27,20 @@ import (
 func main() {
 	ctx := context.TODO()
 
+	// Parse command line arguments
+	var configFilePath = flag.String("c", "", "Configuration file location")
+	var help = flag.Bool("h", false, "Usage information")
+	flag.Parse()
+	if *configFilePath == "" {
+		fmt.Println("Error: -c option is required")
+	}
+	if *help || *configFilePath == "" {
+		fmt.Println("Usage:", os.Args[0], " [-c <config_file_path>] [-h]")
+		return
+	}
+
 	// Read YAML config file
-	err := readConfig("./config.yaml")
+	err := readConfig(*configFilePath)
 	if err != nil {
 		panic(err)
 	}
@@ -197,7 +211,7 @@ func main() {
 					}
 
 					// Push object to bucket
-					fs, _ := f.Stat()
+					fs, err := f.Stat()
 					if err != nil {
 						log.WithFields(lf).WithFields(log.Fields{
 							"name":       event.Name,

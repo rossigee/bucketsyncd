@@ -1,0 +1,10 @@
+[Unit]
+Description=Bucket synchronisation service
+
+[Service]
+ExecStart=/home/rossg/go/bin/bucketsyncd -c /home/rossg/.config/bucketsyncd/config.yaml
+Restart=always
+
+[Install]
+WantedBy=default.target
+RequiredBy=network.target
