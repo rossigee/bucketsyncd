@@ -9,6 +9,13 @@ import (
 
 var config Config
 
+type Remote struct {
+	Name      string `yaml:"name"`
+	Endpoint  string `yaml:"endpoint"`
+	AccessKey string `yaml:"accessKey"`
+	SecretKey string `yaml:"secretKey"`
+}
+
 type Config struct {
 	LogLevel string `yaml:"log_level"`
 	LogJSON  bool   `yaml:"log_json"`
@@ -24,19 +31,12 @@ type Config struct {
 		Name        string `yaml:"name"`
 		Description string `yaml:"description"`
 		Source      string `yaml:"source"`
+		Exchange    string `yaml:"exchange"`
+		Queue       string `yaml:"queue"`
+		Remote      string `yaml:"remote"`
 		Destination string `yaml:"destination"`
 	} `yaml:"inbound"`
-	Notifications []struct {
-		Name   string `yaml:"name"`
-		Method string `yaml:"method"`
-		URL    string `yaml:"url"`
-	} `yaml:"notifications"`
-	Remotes []struct {
-		Name      string `yaml:"name"`
-		Endpoint  string `yaml:"endpoint"`
-		AccessKey string `yaml:"accessKey"`
-		SecretKey string `yaml:"secretKey"`
-	} `yaml:"remotes"`
+	Remotes []Remote `yaml:"remotes"`
 }
 
 func readConfig(filename string) error {

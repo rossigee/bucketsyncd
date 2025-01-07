@@ -7,6 +7,7 @@ toolchain go1.22.9
 require (
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/minio/minio-go/v7 v7.0.83
+	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sirupsen/logrus v1.9.3
 	gopkg.in/yaml.v2 v2.4.0
@@ -25,5 +26,4 @@ require (
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

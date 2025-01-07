@@ -7,8 +7,8 @@ log_level: debug
 remotes:
   - name: minio1
     endpoint: minio.golder.lan
-    accessKey: blah
-    secretKey: blah
+    accessKey: youraccesskey
+    secretKey: yoursecretkey
 
 # Outbound means files that arrive locally that are to be sent to S3, with or without
 # pre-processing being applied.
@@ -35,17 +35,18 @@ outbound:
 # Inbound means files that should be retrieved from S3 to the local machine when we
 # receive an SQS notification that a new file has been deposited.
 inbound:
-  - name: INTEST1
-    description: Dummy Inbound Workflow
-    source: "s3://minio.golder.lan/bank-statements-763015972118/"
-    destination: "/tmp/s3-sync-inbound"
+  - name: FAMILY
+    description: Family Document Scans
+    source: "amqp://bucketsyncd:somepassword@amqp.golder.lan/document-scans"
+    exchange: "family-scans"
+    queue: "scans-to-desktop"
+    remote: minio1
+    destination: "/home/rossg/Downloads"
 
-# notifications:
-#   - name: Discord
-#     method: discord
-#     url: https://discordapp...
-    
-#   - name: Slack
-#     method: slack
-#     url: https://slack...
-    
+  - name: COMPANY
+    description: Company Document Scans
+    source: "amqp://bucketsyncd:somepassword@amqp.golder.lan/document-scans"
+    exchange: "company-scans"
+    queue: "scans-to-desktop"
+    remote: minio1
+    destination: "/home/rossg/Downloads"
