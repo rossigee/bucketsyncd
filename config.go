@@ -16,27 +16,31 @@ type Remote struct {
 	SecretKey string `yaml:"secretKey"`
 }
 
+type Inbound struct {
+	Name        string `yaml:"name"`
+	Description string `yaml:"description"`
+	Source      string `yaml:"source"`
+	Exchange    string `yaml:"exchange"`
+	Queue       string `yaml:"queue"`
+	Remote      string `yaml:"remote"`
+	Destination string `yaml:"destination"`
+}
+
+type Outbound struct {
+	Name        string `yaml:"name"`
+	Description string `yaml:"description"`
+	Sensitive   bool   `yaml:"sensitive"`
+	Source      string `yaml:"source"`
+	Destination string `yaml:"destination"`
+	ProcessWith string `yaml:"process_with,omitempty"`
+}
+
 type Config struct {
-	LogLevel string `yaml:"log_level"`
-	LogJSON  bool   `yaml:"log_json"`
-	Outbound []struct {
-		Name        string `yaml:"name"`
-		Description string `yaml:"description"`
-		Sensitive   bool   `yaml:"sensitive"`
-		Source      string `yaml:"source"`
-		Destination string `yaml:"destination"`
-		ProcessWith string `yaml:"process_with,omitempty"`
-	} `yaml:"outbound"`
-	Inbound []struct {
-		Name        string `yaml:"name"`
-		Description string `yaml:"description"`
-		Source      string `yaml:"source"`
-		Exchange    string `yaml:"exchange"`
-		Queue       string `yaml:"queue"`
-		Remote      string `yaml:"remote"`
-		Destination string `yaml:"destination"`
-	} `yaml:"inbound"`
-	Remotes []Remote `yaml:"remotes"`
+	LogLevel string     `yaml:"log_level"`
+	LogJSON  bool       `yaml:"log_json"`
+	Outbound []Outbound `yaml:"outbound"`
+	Inbound  []Inbound  `yaml:"inbound"`
+	Remotes  []Remote   `yaml:"remotes"`
 }
 
 func readConfig(filename string) error {
