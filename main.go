@@ -2,23 +2,27 @@ package main
 
 import (
 	"fmt"
+	"os/signal"
+	"syscall"
 
 	"os"
 
 	"flag"
 
 	log "github.com/sirupsen/logrus"
-
-	"github.com/fsnotify/fsnotify"
 )
 
-var watchers []fsnotify.Watcher
+var (
+	configFilePath = flag.String("c", "", "Configuration file location")
+	help           = flag.Bool("h", false, "Usage information")
+)
+
+func init() {
+	flag.Parse()
+}
 
 func main() {
 	// Parse command line arguments
-	var configFilePath = flag.String("c", "", "Configuration file location")
-	var help = flag.Bool("h", false, "Usage information")
-	flag.Parse()
 	if *configFilePath == "" {
 		fmt.Println("Error: -c option is required")
 	}
@@ -67,6 +71,19 @@ func main() {
 		in := config.Inbound[i]
 		inbound(in)
 	}
+
+	// Handle termination gracefully
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		log.Info("SIGTERM termination signal received")
+
+		// Close AMQP connections
+		inboundClose()
+
+		done <- true
+	}()
 
 	<-done
 }

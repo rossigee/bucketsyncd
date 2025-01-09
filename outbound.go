@@ -19,6 +19,8 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
+var watchers []fsnotify.Watcher
+
 func outbound(o Outbound) {
 	lf := log.Fields{
 		"workflow": o.Name,

@@ -17,6 +17,8 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
+var connections []*amqp.Connection
+
 func inbound(in Inbound) {
 	lf := log.Fields{
 		"workflow": in.Name,
@@ -43,6 +45,7 @@ func inbound(in Inbound) {
 		log.WithFields(lf).Error("failed to connect to AMQP service: ", err)
 		return
 	}
+	connections = append(connections, conn)
 	go func() {
 		log.WithFields(lf).Debugf("closing connection to AMQP service: %s", <-conn.NotifyClose(make(chan *amqp.Error)))
 	}()
@@ -193,4 +196,12 @@ func inbound(in Inbound) {
 			}
 		}
 	}()
+}
+
+func inboundClose() {
+	for _, c := range connections {
+		if err := c.Close(); err != nil {
+			log.Errorf("unable to close AMQP connection: %s", err)
+		}
+	}
 }
