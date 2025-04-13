@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os/signal"
 	"syscall"
@@ -69,7 +70,7 @@ func main() {
 	// Set up watcher for each inbound source
 	for i := 0; i < len(config.Inbound); i++ {
 		in := config.Inbound[i]
-		inbound(in)
+		inbound(context.Background(), in)
 	}
 
 	// Handle termination gracefully
