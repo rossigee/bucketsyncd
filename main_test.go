@@ -691,7 +691,7 @@ func TestRunServiceSetup(t *testing.T) {
 	}
 
 	// Test done channel setup
-	done := make(chan bool)
+	done := make(chan bool, 1) // Buffered channel
 	select {
 	case done <- true:
 		// Channel is ready
