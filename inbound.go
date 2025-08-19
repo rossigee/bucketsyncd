@@ -19,6 +19,7 @@ import (
 
 var connections []*amqp.Connection
 
+// nolint:gocognit,funlen // This function handles the main AMQP processing logic
 func inbound(in Inbound) {
 	lf := log.Fields{
 		"workflow": in.Name,
@@ -162,15 +163,25 @@ func inbound(in Inbound) {
 					log.WithFields(lf).Error("failed to fetch object from MinIO: ", err)
 					return
 				}
-				defer reader.Close()
+				defer func() {
+					if err := reader.Close(); err != nil {
+						log.WithFields(lf).Error("failed to close reader: ", err)
+					}
+				}()
 
 				localFilename := fmt.Sprintf("%s/%s", in.Destination, filepath.Base(key))
-				localFile, err := os.OpenFile(localFilename, os.O_RDWR|os.O_CREATE, 0644)
+				const filePerms = 0600
+				// #nosec G304 - This is intentional file creation in configured destination
+				localFile, err := os.OpenFile(localFilename, os.O_RDWR|os.O_CREATE, filePerms)
 				if err != nil {
 					log.WithFields(lf).Error("failed to create local file: ", err)
 					return
 				}
-				defer localFile.Close()
+				defer func() {
+					if err := localFile.Close(); err != nil {
+						log.WithFields(lf).Error("failed to close local file: ", err)
+					}
+				}()
 
 				stat, err := reader.Stat()
 				if err != nil {

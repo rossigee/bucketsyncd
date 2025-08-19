@@ -12,22 +12,20 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	debugLevel = "debug"
+	infoLevel  = "info"
+	warnLevel  = "warn"
+)
+
 var (
 	configFilePath = flag.String("c", "", "Configuration file location")
 	help           = flag.Bool("h", false, "Usage information")
 )
 
-func init() {
-	flag.Parse()
-}
-
 func main() {
-	// Parse command line arguments
-	if *configFilePath == "" {
-		fmt.Println("Error: -c option is required")
-	}
-	if *help || *configFilePath == "" {
-		fmt.Println("Usage:", os.Args[0], " [-c <config_file_path>] [-h]")
+	// Parse command line arguments and handle help/usage
+	if !parseCommandLine() {
 		return
 	}
 
@@ -38,25 +36,48 @@ func main() {
 	}
 
 	// Configure logging
+	configureLogging()
+
+	// Start processing
+	runService()
+}
+
+func parseCommandLine() bool {
+	flag.Parse()
+
+	if *configFilePath == "" {
+		fmt.Println("Error: -c option is required")
+	}
+	if *help || *configFilePath == "" {
+		fmt.Println("Usage:", os.Args[0], " [-c <config_file_path>] [-h]")
+		return false
+	}
+	return true
+}
+
+func configureLogging() {
 	log.SetFormatter(&log.TextFormatter{
 		DisableColors: true,
 		FullTimestamp: true,
 	})
+
 	switch config.LogLevel {
-	case "debug":
+	case debugLevel:
 		log.SetLevel(log.DebugLevel)
-	case "info":
+	case infoLevel:
 		log.SetLevel(log.InfoLevel)
-	case "warn":
+	case warnLevel:
 		log.SetLevel(log.WarnLevel)
 	}
-	if config.LogLevel == "debug" {
+	if config.LogLevel == debugLevel {
 		log.SetLevel(log.DebugLevel)
 	}
 	if config.LogJSON {
 		log.SetFormatter(&log.JSONFormatter{})
 	}
+}
 
+func runService() {
 	// Stops the program from exiting prematurely
 	done := make(chan bool)
 
@@ -73,7 +94,8 @@ func main() {
 	}
 
 	// Handle termination gracefully
-	c := make(chan os.Signal, 2)
+	const signalBufferSize = 2
+	c := make(chan os.Signal, signalBufferSize)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c

@@ -21,6 +21,7 @@ import (
 
 var watchers []fsnotify.Watcher
 
+// nolint:gocognit,funlen // This function handles the main file watching and upload logic
 func outbound(o Outbound) {
 	lf := log.Fields{
 		"workflow": o.Name,
@@ -32,7 +33,11 @@ func outbound(o Outbound) {
 		log.WithFields(lf).Error(err)
 		return
 	}
-	defer watcher.Close()
+	defer func() {
+		if err := watcher.Close(); err != nil {
+			log.WithFields(lf).Error("failed to close watcher: ", err)
+		}
+	}()
 	watchers = append(watchers, *watcher)
 
 	// Extract folder to watch, and file glob to filter on
@@ -85,7 +90,11 @@ func outbound(o Outbound) {
 					}).Error(fmt.Printf("failed to open file %q, %v", filename, err))
 					return
 				}
-				defer f.Close()
+				defer func() {
+					if err := f.Close(); err != nil {
+						log.WithFields(lf).Error("failed to close file: ", err)
+					}
+				}()
 
 				// [IGNORE THIS FOR NOW] If we need to stream to a processor, do so here
 				// var p io.Writer = bufio.NewWriterSize(f, 1024)
@@ -115,15 +124,20 @@ func outbound(o Outbound) {
 				// 	// Pass through unprocessed
 				// 	p = f
 				// }
-				//p.Flush()
+				// p.Flush()
 
 				// Create a buffered reader
 
 				// Determine remote bucket details
 				u, err := url.Parse(o.Destination)
+				if err != nil {
+					log.WithFields(lf).Error("failed to parse destination URL: ", err)
+					return
+				}
 				endpoint := u.Hostname()
 				tokens := strings.Split(u.Path, "/")
-				if len(tokens) < 2 {
+				const minTokens = 2
+				if len(tokens) < minTokens {
 					log.WithFields(lf).Error("Invalid S3 path: ", u.Path)
 					return
 				}

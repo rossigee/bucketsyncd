@@ -1,2 +1,67 @@
-build
+# Build outputs
+build/
+dist/
 ./bucketsyncd
+bucketsyncd
+bucketsyncd.exe
+bucketsyncd.app
+
+# Go specific
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.out
+coverage.html
+
+# Go modules
+go.work
+go.work.sum
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Configuration files with secrets
+config-local.yaml
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Test files
+testdata/
+*.tmp
+temp_*
+
+# Security
+.secrets.baseline

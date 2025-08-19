@@ -1,7 +1,8 @@
+// Package main provides the bucket synchronisation service.
 package main
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"gopkg.in/yaml.v2"
@@ -46,7 +47,8 @@ type Config struct {
 func readConfig(filename string) error {
 	// Read YAML config file
 	fullpath, _ := filepath.Abs(filename)
-	yamlFile, err := ioutil.ReadFile(fullpath)
+	// #nosec G304 - This is intentional file reading based on user input
+	yamlFile, err := os.ReadFile(fullpath)
 	if err != nil {
 		return err
 	}
