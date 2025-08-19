@@ -495,8 +495,8 @@ func TestRunServiceFunctionExecution(t *testing.T) {
 		// Test signal channel creation
 		const signalBufferSize = 2
 		c := make(chan os.Signal, signalBufferSize)
-		if c == nil {
-			t.Error("Signal channel should be created")
+		if cap(c) != signalBufferSize {
+			t.Errorf("Signal channel capacity should be %d", signalBufferSize)
 		}
 
 		// Test done channel
@@ -692,9 +692,13 @@ func TestRunServiceSetup(t *testing.T) {
 
 	// Test done channel setup
 	done := make(chan bool)
-	if done == nil {
-		t.Error("Done channel should be created")
+	select {
+	case done <- true:
+		// Channel is ready
+	default:
+		t.Error("Done channel should be ready to receive")
 	}
+	<-done // Clean up the channel
 
 	// Test configuration arrays processing
 	outboundCount := len(config.Outbound)

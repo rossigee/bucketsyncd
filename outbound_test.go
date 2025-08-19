@@ -156,6 +156,7 @@ func TestOutboundFunctionExecution(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
 			// Expected to fail due to no real S3 service, that's OK for coverage testing
+			t.Logf("Function panicked as expected: %v", r)
 		}
 	}()
 
