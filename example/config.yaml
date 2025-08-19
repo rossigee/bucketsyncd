@@ -32,6 +32,18 @@ outbound:
     destination: "s3://minio.golder.lan/bank-statements-family/kasikorn-rossigee"
     sensitive: false
 
+  - name: WEBDAV1
+    description: WebDAV Document Sync
+    source: "/home/rossg/Documents/sync/*"
+    destination: "webdav://user:password@webdav.example.com/documents"
+    sensitive: false
+
+  - name: WEBDAV2
+    description: Secure WebDAV Backup
+    source: "/home/rossg/Backups/important/*"
+    destination: "webdavs://backup-user:secure-pass@secure-webdav.example.com/backups"
+    sensitive: true
+
 # Inbound means files that should be retrieved from S3 to the local machine when we
 # receive an SQS notification that a new file has been deposited.
 inbound:

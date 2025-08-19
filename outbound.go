@@ -128,76 +128,111 @@ func outbound(o Outbound) {
 
 				// Create a buffered reader
 
-				// Determine remote bucket details
+				// Determine destination type and handle accordingly
 				u, err := url.Parse(o.Destination)
 				if err != nil {
 					log.WithFields(lf).Error("failed to parse destination URL: ", err)
 					return
 				}
-				endpoint := u.Hostname()
-				tokens := strings.Split(u.Path, "/")
-				const minTokens = 2
-				if len(tokens) < minTokens {
-					log.WithFields(lf).Error("Invalid S3 path: ", u.Path)
-					return
-				}
-				awsBucket := tokens[1]
-				awsFileKey := strings.Join(tokens[2:], "/") + "/" + filename
-				log.WithFields(lf).WithFields(log.Fields{
-					"name":       event.Name,
-					"endpoint":   endpoint,
-					"awsBucket":  awsBucket,
-					"awsFileKey": awsFileKey,
-				}).Debug("uploading to bucket")
 
-				// Determine remote to use to create a new MinIO client
-				creds := credentials.Credentials{}
-				credsFound := false
-				for _, remote := range config.Remotes {
-					if remote.Endpoint == endpoint {
-						creds = *credentials.NewStaticV4(remote.AccessKey, remote.SecretKey, "")
-						credsFound = true
+				// Check if this is a WebDAV destination
+				if isWebDAVScheme(u.Scheme) {
+					// Handle WebDAV upload
+					webdavClient, err := NewWebDAVClient(o.Destination)
+					if err != nil {
+						log.WithFields(lf).Error("failed to create WebDAV client: ", err)
+						return
 					}
-				}
-				if !credsFound {
-					log.WithFields(lf).Error("No credentials found")
-					return
-				}
-				mc, err := minio.New(endpoint, &minio.Options{
-					Creds:  &creds,
-					Secure: true,
-				})
-				if err != nil {
-					log.WithFields(lf).Fatal(err)
-					return
-				}
 
-				// Push object to bucket
-				fs, err := f.Stat()
-				if err != nil {
+					// Determine remote path
+					remotePath := strings.TrimSuffix(u.Path, "/") + "/" + filename
+					
+					log.WithFields(lf).WithFields(log.Fields{
+						"name":        event.Name,
+						"remote_path": remotePath,
+					}).Debug("uploading to WebDAV")
+
+					err = webdavClient.Upload(f, remotePath)
+					if err != nil {
+						log.WithFields(lf).WithFields(log.Fields{
+							"name":        event.Name,
+							"remote_path": remotePath,
+						}).Error("failed to upload file to WebDAV: ", err)
+						return
+					}
+
+					log.WithFields(lf).WithFields(log.Fields{
+						"name":        event.Name,
+						"remote_path": remotePath,
+					}).Info("successfully uploaded file to WebDAV")
+
+				} else {
+					// Handle S3 upload (existing logic)
+					endpoint := u.Hostname()
+					tokens := strings.Split(u.Path, "/")
+					const minTokens = 2
+					if len(tokens) < minTokens {
+						log.WithFields(lf).Error("Invalid S3 path: ", u.Path)
+						return
+					}
+					awsBucket := tokens[1]
+					awsFileKey := strings.Join(tokens[2:], "/") + "/" + filename
+					log.WithFields(lf).WithFields(log.Fields{
+						"name":       event.Name,
+						"endpoint":   endpoint,
+						"awsBucket":  awsBucket,
+						"awsFileKey": awsFileKey,
+					}).Debug("uploading to S3 bucket")
+
+					// Determine remote to use to create a new MinIO client
+					creds := credentials.Credentials{}
+					credsFound := false
+					for _, remote := range config.Remotes {
+						if remote.Endpoint == endpoint {
+							creds = *credentials.NewStaticV4(remote.AccessKey, remote.SecretKey, "")
+							credsFound = true
+						}
+					}
+					if !credsFound {
+						log.WithFields(lf).Error("No S3 credentials found for endpoint: ", endpoint)
+						return
+					}
+					mc, err := minio.New(endpoint, &minio.Options{
+						Creds:  &creds,
+						Secure: true,
+					})
+					if err != nil {
+						log.WithFields(lf).Fatal(err)
+						return
+					}
+
+					// Push object to S3 bucket
+					fs, err := f.Stat()
+					if err != nil {
+						log.WithFields(lf).WithFields(log.Fields{
+							"name":       event.Name,
+							"awsBucket":  awsBucket,
+							"awsFileKey": awsFileKey,
+						}).Error("unable to query file size: ", err)
+						return
+					}
+					ctx := context.TODO()
+					_, err = mc.PutObject(ctx, awsBucket, awsFileKey, f, fs.Size(), minio.PutObjectOptions{})
+					if err != nil {
+						log.WithFields(lf).WithFields(log.Fields{
+							"name":       event.Name,
+							"awsBucket":  awsBucket,
+							"awsFileKey": awsFileKey,
+						}).Error("failed to upload file to S3: ", err)
+						return
+					}
 					log.WithFields(lf).WithFields(log.Fields{
 						"name":       event.Name,
 						"awsBucket":  awsBucket,
 						"awsFileKey": awsFileKey,
-					}).Error("unable to query file size: ", err)
-					return
+						"size":       fs.Size(),
+					}).Info("uploaded to S3")
 				}
-				ctx := context.TODO()
-				_, err = mc.PutObject(ctx, awsBucket, awsFileKey, f, fs.Size(), minio.PutObjectOptions{})
-				if err != nil {
-					log.WithFields(lf).WithFields(log.Fields{
-						"name":       event.Name,
-						"awsBucket":  awsBucket,
-						"awsFileKey": awsFileKey,
-					}).Error("failed to upload file to S3: ", err)
-					return
-				}
-				log.WithFields(lf).WithFields(log.Fields{
-					"name":       event.Name,
-					"awsBucket":  awsBucket,
-					"awsFileKey": awsFileKey,
-					"size":       fs.Size(),
-				}).Info("uploaded to S3")
 
 			case err, ok := <-watcher.Errors:
 				if !ok {
