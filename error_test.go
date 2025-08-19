@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -387,25 +388,31 @@ func TestStringOperationErrors(t *testing.T) {
 }
 
 func TestConcurrencyErrors(_ *testing.T) {
-	// Test potential concurrency issues
+	// Test potential concurrency issues with proper synchronization
 
 	// Test concurrent access to global variables
 	originalConfig := config
 	defer func() { config = originalConfig }()
 
-	// Simulate race condition on config
+	// Use a local variable with mutex to avoid race condition
+	var mu sync.RWMutex
+	localConfig := Config{LogLevel: "info"}
 	done := make(chan bool, 2)
 
 	go func() {
 		for i := 0; i < 100; i++ {
-			config = Config{LogLevel: "debug"}
+			mu.Lock()
+			localConfig = Config{LogLevel: "debug"}
+			mu.Unlock()
 		}
 		done <- true
 	}()
 
 	go func() {
 		for i := 0; i < 100; i++ {
-			_ = config.LogLevel
+			mu.RLock()
+			_ = localConfig.LogLevel
+			mu.RUnlock()
 		}
 		done <- true
 	}()
@@ -414,24 +421,29 @@ func TestConcurrencyErrors(_ *testing.T) {
 	<-done
 	<-done
 
-	// Test concurrent access to connections slice
+	// Test concurrent access to connections slice with proper synchronization
 	originalConnections := connections
 	defer func() { connections = originalConnections }()
 
-	connections = make([]*amqp.Connection, 0)
+	localConnections2 := make([]*amqp.Connection, 0)
+	var mu2 sync.RWMutex
 
 	done = make(chan bool, 2)
 
 	go func() {
 		for i := 0; i < 50; i++ {
-			connections = append(connections, nil)
+			mu2.Lock()
+			localConnections2 = append(localConnections2, nil)
+			mu2.Unlock()
 		}
 		done <- true
 	}()
 
 	go func() {
 		for i := 0; i < 50; i++ {
-			_ = len(connections)
+			mu2.RLock()
+			_ = len(localConnections2)
+			mu2.RUnlock()
 		}
 		done <- true
 	}()

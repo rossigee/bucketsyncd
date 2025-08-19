@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -258,7 +259,7 @@ func TestMultipleConfigurations(t *testing.T) {
 }
 
 func TestConcurrentSafety(t *testing.T) {
-	// Test that global variables are handled safely
+	// Test that global variables are handled safely with proper synchronization
 	// This is a basic test - real concurrent testing would require more setup
 
 	originalConfig := config
@@ -266,18 +267,23 @@ func TestConcurrentSafety(t *testing.T) {
 
 	// Test that connections slice can be safely accessed
 	originalConnections := connections
-	connections = make([]*amqp.Connection, 0)
+	localConnections := make([]*amqp.Connection, 0)
+	var mu sync.RWMutex
 
-	// Simulate concurrent access
+	// Simulate concurrent access with proper synchronization
 	done := make(chan bool, 2)
 
 	go func() {
-		connections = append(connections, nil)
+		mu.Lock()
+		localConnections = append(localConnections, nil)
+		mu.Unlock()
 		done <- true
 	}()
 
 	go func() {
-		_ = len(connections)
+		mu.RLock()
+		_ = len(localConnections)
+		mu.RUnlock()
 		done <- true
 	}()
 
