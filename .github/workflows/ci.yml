@@ -8,6 +8,11 @@ on:
   release:
     types: [ published ]
 
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
 env:
   GO_VERSION: '1.25.0'
 
@@ -99,6 +104,7 @@ jobs:
       uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: results.sarif
+      continue-on-error: true
       if: always()
 
   build:
