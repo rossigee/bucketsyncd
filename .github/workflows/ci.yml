@@ -193,8 +193,9 @@ jobs:
   docker:
     name: Build Docker Image
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [test, lint, security]
-    if: github.ref == 'refs/heads/master' || github.event_name == 'release'
+    if: github.event_name == 'release'
     steps:
     - name: Check out code
       uses: actions/checkout@v4
