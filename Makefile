@@ -51,7 +51,7 @@ clean:
 	rm -f coverage.out coverage.html
 
 install-tools:
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v2.4.0
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$(go env GOPATH)/bin v2.9.0
 	go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
 	go install golang.org/x/tools/cmd/goimports@latest
 
