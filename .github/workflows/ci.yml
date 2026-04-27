@@ -158,10 +158,16 @@ jobs:
         # Create Debian package structure
         mkdir -p build/debian/DEBIAN
         mkdir -p build/debian/usr/bin
+        mkdir -p build/debian/usr/share/doc/bucketsyncd/examples
 
         # Copy binary
         cp "build/bucketsyncd-linux-${ARCH}" build/debian/usr/bin/bucketsyncd
         chmod 755 build/debian/usr/bin/bucketsyncd
+
+        # Copy documentation
+        cp README.md build/debian/usr/share/doc/bucketsyncd/
+        cp CHANGELOG.md build/debian/usr/share/doc/bucketsyncd/
+        cp -r example/* build/debian/usr/share/doc/bucketsyncd/examples/
 
         # Create control file
         cat > build/debian/DEBIAN/control << EOF

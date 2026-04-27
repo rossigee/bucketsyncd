@@ -30,9 +30,14 @@ deb: build
 	# Create Debian package structure
 	mkdir -p $(DEB_DIR)/DEBIAN
 	mkdir -p $(DEB_DIR)/usr/bin
+	mkdir -p $(DEB_DIR)/usr/share/doc/bucketsyncd/examples
 	# Copy binary
 	cp "$(BUILD_DIR)/$(BINARY_NAME)" $(DEB_DIR)/usr/bin/$(BINARY_NAME)
 	chmod 755 $(DEB_DIR)/usr/bin/$(BINARY_NAME)
+	# Copy documentation
+	cp README.md $(DEB_DIR)/usr/share/doc/bucketsyncd/
+	cp CHANGELOG.md $(DEB_DIR)/usr/share/doc/bucketsyncd/
+	cp -r example/* $(DEB_DIR)/usr/share/doc/bucketsyncd/examples/
 	# Create control file
 	echo "Package: $(BINARY_NAME)" > $(DEB_DIR)/DEBIAN/control
 	echo "Version: $(PKG_VERSION)" >> $(DEB_DIR)/DEBIAN/control
