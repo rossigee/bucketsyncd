@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	version    = "v0.3.0"
 	debugLevel = "debug"
 	infoLevel  = "info"
 	warnLevel  = "warn"
@@ -21,6 +22,7 @@ const (
 var (
 	configFilePath = flag.String("c", "", "Configuration file location")
 	help           = flag.Bool("h", false, "Usage information")
+	showVersion    = flag.Bool("version", false, "Show version information")
 )
 
 func main() {
@@ -45,11 +47,16 @@ func main() {
 func parseCommandLine() bool {
 	flag.Parse()
 
+	if *showVersion {
+		fmt.Println("bucketsyncd", version)
+		return false
+	}
+
 	if *configFilePath == "" {
 		fmt.Println("Error: -c option is required")
 	}
 	if *help || *configFilePath == "" {
-		fmt.Println("Usage:", os.Args[0], " [-c <config_file_path>] [-h]")
+		fmt.Println("Usage:", os.Args[0], " [-c <config_file_path>] [-h] [-version]")
 		return false
 	}
 	return true
