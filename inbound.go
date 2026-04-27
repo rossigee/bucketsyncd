@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"time"
 
 	"os"
 	"path/filepath"
@@ -16,6 +17,32 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
+
+// S3Event represents the structure of an S3 event notification
+type S3Event struct {
+	EventName string      `json:"EventName"`
+	Records   []S3Record  `json:"Records"`
+}
+
+type S3Record struct {
+	S3 S3Info `json:"s3"`
+}
+
+type S3Info struct {
+	Bucket BucketInfo `json:"bucket"`
+	Object ObjectInfo `json:"object"`
+}
+
+type BucketInfo struct {
+	Name string `json:"name"`
+}
+
+type ObjectInfo struct {
+	Key  string  `json:"key"`
+	Size float64 `json:"size"`
+}
+
+
 
 var connections []*amqp.Connection
 
@@ -73,7 +100,7 @@ func inbound(in Inbound) {
 	// Consume messages
 	deliveries, err := channel.Consume(
 		in.Queue,
-		"backupsyncd",
+		"bucketsyncd",
 		false,
 		false,
 		false,
@@ -95,40 +122,33 @@ func inbound(in Inbound) {
 			)
 
 			// Parse JSON payload
-			var message map[string]interface{}
-			err := json.Unmarshal(d.Body, &message)
+			var event S3Event
+			err := json.Unmarshal(d.Body, &event)
 			if err != nil {
 				log.WithFields(lf).Error("failed to parse JSON payload: ", err)
+				if nackErr := d.Nack(false, true); nackErr != nil { // Requeue for retry
+					log.WithFields(lf).Error("failed to nack message: ", nackErr)
+				}
 				return
 			}
-			eventName := message["EventName"].(string)
-			records := message["Records"].([]interface{})
-			for _, record := range records {
-				// Extract details from record
-				r := record.(map[string]interface{})
-				s3 := r["s3"].(map[string]interface{})
-				bucket := s3["bucket"].(map[string]interface{})
-				bucketName := bucket["name"].(string)
-				obj := s3["object"].(map[string]interface{})
-				key, err := url.QueryUnescape(obj["key"].(string))
+
+			// Process each record in the event
+			for _, record := range event.Records {
+				bucketName := record.S3.Bucket.Name
+				key, err := url.QueryUnescape(record.S3.Object.Key)
 				if err != nil {
-					log.WithFields(lf).Errorf("invalid URL-encoded key: %s", obj["key"])
+					log.WithFields(lf).Errorf("invalid URL-encoded key: %s", record.S3.Object.Key)
+					if nackErr := d.Nack(false, false); nackErr != nil { // Don't requeue invalid messages
+						log.WithFields(lf).Error("failed to nack message: ", nackErr)
+					}
 					return
 				}
-				size := obj["size"].(float64)
+				size := record.S3.Object.Size
 				log.WithFields(lf).WithFields(log.Fields{
 					"bucket": bucketName,
 					"key":    key,
 					"size":   size,
-				}).Debugf("event '%s' received", eventName)
-
-				// // Format record as JSON [DEBUG]
-				// jsonMessage, err := json.Marshal(record)
-				// if err != nil {
-				// 	log.WithFields(lf).Error("failed to format message as JSON: ", err)
-				// 	return
-				// }
-				// fmt.Println(jsonMessage)
+				}).Debugf("event '%s' received", event.EventName)
 
 				// Determine remote to use to create a new MinIO client
 				creds := credentials.Credentials{}
@@ -143,6 +163,9 @@ func inbound(in Inbound) {
 				}
 				if !credsFound {
 					log.WithFields(lf).Error("no credentials found")
+					if nackErr := d.Nack(false, true); nackErr != nil { // Requeue, maybe config issue
+						log.WithFields(lf).Error("failed to nack message: ", nackErr)
+					}
 					return
 				}
 				log.WithFields(lf).Debugf("connecting to endpoint '%s'", remote.Endpoint)
@@ -152,20 +175,27 @@ func inbound(in Inbound) {
 				})
 				if err != nil {
 					log.WithFields(lf).Error("failed to create MinIO client: ", err)
+					if nackErr := d.Nack(false, true); nackErr != nil {
+						log.WithFields(lf).Error("failed to nack message: ", nackErr)
+					}
 					return
 				}
 
 				// Fetch given file from object storage
 				opts := minio.GetObjectOptions{}
-				ctx := context.TODO()
-				reader, err := mc.GetObject(ctx, bucketName, key, opts)
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				defer cancel()
+				obj, err := mc.GetObject(ctx, bucketName, key, opts)
 				if err != nil {
 					log.WithFields(lf).Error("failed to fetch object from MinIO: ", err)
+					if nackErr := d.Nack(false, true); nackErr != nil {
+						log.WithFields(lf).Error("failed to nack message: ", nackErr)
+					}
 					return
 				}
 				defer func() {
-					if err := reader.Close(); err != nil {
-						log.WithFields(lf).Error("failed to close reader: ", err)
+					if err := obj.Close(); err != nil {
+						log.WithFields(lf).Error("failed to close object: ", err)
 					}
 				}()
 
@@ -175,6 +205,9 @@ func inbound(in Inbound) {
 				localFile, err := os.OpenFile(localFilename, os.O_RDWR|os.O_CREATE, filePerms)
 				if err != nil {
 					log.WithFields(lf).Error("failed to create local file: ", err)
+					if nackErr := d.Nack(false, true); nackErr != nil {
+						log.WithFields(lf).Error("failed to nack message: ", nackErr)
+					}
 					return
 				}
 				defer func() {
@@ -183,14 +216,20 @@ func inbound(in Inbound) {
 					}
 				}()
 
-				stat, err := reader.Stat()
+				stat, err := obj.Stat()
 				if err != nil {
-					log.WithFields(lf).Error("failed to get reader size: ", err)
+					log.WithFields(lf).Error("failed to get object stat: ", err)
+					if nackErr := d.Nack(false, true); nackErr != nil {
+						log.WithFields(lf).Error("failed to nack message: ", nackErr)
+					}
 					return
 				}
 
-				if _, err := io.CopyN(localFile, reader, stat.Size); err != nil {
+				if _, err := io.CopyN(localFile, obj, stat.Size); err != nil {
 					log.WithFields(lf).Error("failed to copy file from reader: ", err)
+					if nackErr := d.Nack(false, true); nackErr != nil {
+						log.WithFields(lf).Error("failed to nack message: ", nackErr)
+					}
 					return
 				}
 
@@ -200,11 +239,15 @@ func inbound(in Inbound) {
 				}).Info("retrieved remote object to local file")
 			}
 
-			// Acknowledge queued message
+			// Acknowledge queued message after successful processing
 			err = d.Ack(false)
-			if err != nil {
-				log.WithFields(lf).Error("failed to acknowledge AMQP message: ", err)
-			}
+				if err != nil {
+					log.WithFields(lf).Error("failed to copy file from reader: ", err)
+					if nackErr := d.Nack(false, true); nackErr != nil {
+						log.WithFields(lf).Error("failed to nack message: ", nackErr)
+					}
+					return
+				}
 		}
 	}()
 }

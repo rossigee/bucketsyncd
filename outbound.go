@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"os"
 	"path/filepath"
@@ -18,6 +19,8 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
+
+
 
 var watchers []fsnotify.Watcher
 
@@ -202,7 +205,7 @@ func outbound(o Outbound) {
 						Secure: true,
 					})
 					if err != nil {
-						log.WithFields(lf).Fatal(err)
+						log.WithFields(lf).Error("failed to create MinIO client: ", err)
 						return
 					}
 
@@ -216,14 +219,18 @@ func outbound(o Outbound) {
 						}).Error("unable to query file size: ", err)
 						return
 					}
-					ctx := context.TODO()
-					_, err = mc.PutObject(ctx, awsBucket, awsFileKey, f, fs.Size(), minio.PutObjectOptions{})
+					err = RetryOperation(func() error {
+						ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+						defer cancel()
+						_, err := mc.PutObject(ctx, awsBucket, awsFileKey, f, fs.Size(), minio.PutObjectOptions{})
+						return err
+					}, 3)
 					if err != nil {
 						log.WithFields(lf).WithFields(log.Fields{
 							"name":       event.Name,
 							"awsBucket":  awsBucket,
 							"awsFileKey": awsFileKey,
-						}).Error("failed to upload file to S3: ", err)
+						}).Error("failed to upload file to S3 after retries: ", err)
 						return
 					}
 					log.WithFields(lf).WithFields(log.Fields{
@@ -246,6 +253,7 @@ func outbound(o Outbound) {
 	// Start watching folder
 	err = watcher.Add(localFolder)
 	if err != nil {
-		log.WithFields(lf).Fatal(err)
+		log.WithFields(lf).Error("failed to start watching folder: ", err)
+		return
 	}
 }
