@@ -139,9 +139,50 @@ jobs:
         elif [ "$GOOS" = "darwin" ]; then
           BINARY_NAME="bucketsyncd.app"
         fi
-        
+
         mkdir -p build
         go build -ldflags="-s -w" -o "build/${BINARY_NAME}-${GOOS}-${GOARCH}" .
+
+    - name: Package .deb (Linux only)
+      if: matrix.goos == 'linux'
+      env:
+        ARCH: ${{ matrix.goarch }}
+        VERSION: ${{ github.ref_name }}
+      run: |
+        # Set version (strip 'v' prefix if present)
+        PKG_VERSION="${VERSION#v}"
+        if [ -z "$PKG_VERSION" ]; then
+          PKG_VERSION="dev"
+        fi
+
+        # Create Debian package structure
+        mkdir -p build/debian/DEBIAN
+        mkdir -p build/debian/usr/bin
+
+        # Copy binary
+        cp "build/bucketsyncd-linux-${ARCH}" build/debian/usr/bin/bucketsyncd
+        chmod 755 build/debian/usr/bin/bucketsyncd
+
+        # Create control file
+        cat > build/debian/DEBIAN/control << EOF
+        Package: bucketsyncd
+        Version: ${PKG_VERSION}
+        Architecture: ${ARCH}
+        Maintainer: rossigee <ross@example.com>
+        Description: Bucket synchronisation service for automatic file sync
+         This application provides a bucket synchronisation service that automatically
+         downloads files to a local folder as they appear in a remote bucket, or uploads
+         files to a remote bucket or WebDAV server from a local folder.
+        Depends: libc6
+        Section: utils
+        Priority: optional
+        Homepage: https://github.com/rossigee/bucketsyncd
+        License: MIT
+        EOF
+
+        # Build .deb package
+        cd build
+        dpkg-deb --build debian "bucketsyncd-${PKG_VERSION}-${ARCH}.deb"
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
