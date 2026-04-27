@@ -1,5 +1,7 @@
 # Bucket synchronisation service
 
+**Version:** v0.3.0
+
 ## Introduction
 
 This application provides a bucket synchronisation service that provides a way to automatically download files to a local folder as they appear in a remote bucket, or to automatically upload files to a remote bucket or WebDAV server from a local folder as they are written to it.
@@ -10,6 +12,7 @@ This application provides a bucket synchronisation service that provides a way t
 *   **Pull synchronisation**: Can process S3 upload event notifications from a message queue, downloading new or updated files to the local machine.
 *   **Multiple Storage Backends**: Supports both S3-compatible storage (MinIO, AWS S3) and WebDAV servers.
 *   **Secure Protocols**: Supports both HTTP (`webdav://`) and HTTPS (`webdavs://`) WebDAV connections.
+*   **Reliability**: Automatic retry logic with exponential backoff for failed operations, and timeouts to prevent hanging.
 *   **Custom Filtering**: (TODO) Ability to process the file with a script before upload/download, which useful for removing or obfuscating sensitive data.
 
 ## Usage
