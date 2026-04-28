@@ -1,6 +1,6 @@
 # Bucket synchronisation service
 
-**Version:** v0.3.0
+**Version:** v0.3.1
 
 ## Introduction
 
