@@ -169,6 +169,8 @@ func outbound(o Outbound) {
 						"remote_path": remotePath,
 					}).Info("successfully uploaded file to WebDAV")
 
+					SendNotification("bucketsyncd", fmt.Sprintf("Uploaded %s to WebDAV", filename))
+
 				} else {
 					// Handle S3 upload (existing logic)
 					endpoint := u.Hostname()
@@ -239,6 +241,8 @@ func outbound(o Outbound) {
 						"awsFileKey": awsFileKey,
 						"size":       fs.Size(),
 					}).Info("uploaded to S3")
+
+					SendNotification("bucketsyncd", fmt.Sprintf("Uploaded %s to S3", filename))
 				}
 
 			case err, ok := <-watcher.Errors:
