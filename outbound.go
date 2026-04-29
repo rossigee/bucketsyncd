@@ -22,7 +22,7 @@ import (
 
 
 
-var watchers []fsnotify.Watcher
+var watchers []*fsnotify.Watcher
 
 // nolint:gocognit,funlen // This function handles the main file watching and upload logic
 func outbound(o Outbound) {
@@ -36,12 +36,7 @@ func outbound(o Outbound) {
 		log.WithFields(lf).Error(err)
 		return
 	}
-	defer func() {
-		if err := watcher.Close(); err != nil {
-			log.WithFields(lf).Error("failed to close watcher: ", err)
-		}
-	}()
-	watchers = append(watchers, *watcher)
+	watchers = append(watchers, watcher)
 
 	// Extract folder to watch, and file glob to filter on
 	localFolder := filepath.Dir(o.Source)
@@ -65,8 +60,8 @@ func outbound(o Outbound) {
 					"op":   event.Op,
 				}).Debug("Event")
 
-				// Ignore non-Write events
-				if event.Op&fsnotify.Write != fsnotify.Write {
+				// Ignore events that are not Write or Create
+				if event.Op&(fsnotify.Write|fsnotify.Create) == 0 {
 					log.WithFields(lf).WithFields(log.Fields{
 						"name": event.Name,
 						"op":   event.Op,
@@ -172,9 +167,9 @@ func outbound(o Outbound) {
 					SendNotification("bucketsyncd", fmt.Sprintf("Uploaded %s to WebDAV", filename))
 
 				} else {
-					// Handle S3 upload (existing logic)
-					endpoint := u.Hostname()
-					tokens := strings.Split(u.Path, "/")
+				// Handle S3 upload (existing logic)
+				endpoint := u.Host
+				tokens := strings.Split(u.Path, "/")
 					const minTokens = 2
 					if len(tokens) < minTokens {
 						log.WithFields(lf).Error("Invalid S3 path: ", u.Path)
@@ -259,5 +254,13 @@ func outbound(o Outbound) {
 	if err != nil {
 		log.WithFields(lf).Error("failed to start watching folder: ", err)
 		return
+	}
+}
+
+func outboundClose() {
+	for _, w := range watchers {
+		if err := w.Close(); err != nil {
+			log.Errorf("unable to close watcher: %s", err)
+		}
 	}
 }

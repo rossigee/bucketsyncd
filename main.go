@@ -108,7 +108,8 @@ func runService() {
 		<-c
 		log.Info("SIGTERM termination signal received")
 
-		// Close AMQP connections
+		// Close watchers and AMQP connections
+		outboundClose()
 		inboundClose()
 
 		done <- true
