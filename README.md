@@ -12,7 +12,7 @@ This application provides a bucket synchronisation service that provides a way t
 *   **Pull synchronisation**: Can process S3 upload event notifications from a message queue, downloading new or updated files to the local machine.
 *   **Multiple Storage Backends**: Supports both S3-compatible storage (MinIO, AWS S3) and WebDAV servers.
 *   **Secure Protocols**: Supports both HTTP (`webdav://`) and HTTPS (`webdavs://`) WebDAV connections.
-*   **Reliability**: Automatic retry logic with exponential backoff for failed operations, and timeouts to prevent hanging.
+*   **Desktop Notifications**: Optional desktop notifications when files are successfully uploaded or downloaded (Linux/macOS/Windows).
 *   **Custom Filtering**: (TODO) Ability to process the file with a script before upload/download, which useful for removing or obfuscating sensitive data.
 
 ## Usage
@@ -48,6 +48,31 @@ WebDAV credentials are embedded directly in the URL. No separate remote configur
 - Support for both HTTP and HTTPS connections
 - Username/password authentication
 - Compatible with popular WebDAV servers (Apache, nginx, Nextcloud, etc.)
+
+## Desktop Notifications
+
+bucketsyncd can optionally send desktop notifications when files are successfully uploaded or downloaded. This provides immediate visual feedback for sync operations.
+
+### Configuration
+
+Add to your `config.yaml`:
+
+```yaml
+enable_notifications: true
+```
+
+### Platform Support
+
+- **Linux**: Uses `notify-send` (requires `libnotify-bin` package)
+- **macOS**: Uses system notifications via `osascript`
+- **Windows**: Uses PowerShell MessageBox
+
+### Examples
+
+- "Uploaded statement.pdf to S3"
+- "Downloaded scan001.jpg"
+
+Notifications are sent asynchronously and won't block sync operations.
 
 ## Configuration example
 

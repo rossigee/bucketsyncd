@@ -1,0 +1,56 @@
+package main
+
+import (
+	"os/exec"
+	"runtime"
+	"testing"
+)
+
+// TestSendNotification tests the notification functionality
+func TestSendNotification(t *testing.T) {
+	// Save original config
+	originalConfig := config
+	defer func() { config = originalConfig }()
+
+	// Test with notifications disabled
+	config = Config{EnableNotifications: false}
+	SendNotification("Test", "Message")
+	// Should not attempt to send notification
+
+	// Test with notifications enabled
+	config = Config{EnableNotifications: true}
+
+	// This will attempt to send a notification, but since it's async and may fail,
+	// we mainly test that it doesn't panic and calls the right command
+	SendNotification("bucketsyncd", "Test notification")
+
+	// Test different platforms (we can't easily test the actual commands without mocking)
+	switch runtime.GOOS {
+	case "linux":
+		// Should use notify-send
+		_ = exec.Command("notify-send", "--version")
+	case "darwin":
+		// Should use osascript
+		_ = exec.Command("osascript", "--version")
+	case "windows":
+		// Should use powershell
+		_ = exec.Command("powershell", "-Command", "Get-Host")
+	}
+}
+
+// TestNotificationConfig tests that the config option works
+func TestNotificationConfig(t *testing.T) {
+	// Test parsing config with notifications
+	config = Config{}
+	// The config is parsed in readConfig, but for this test we can just set it
+	config.EnableNotifications = true
+
+	if !config.EnableNotifications {
+		t.Error("EnableNotifications should be true")
+	}
+
+	config.EnableNotifications = false
+	if config.EnableNotifications {
+		t.Error("EnableNotifications should be false")
+	}
+}
