@@ -2,7 +2,7 @@
 
 # Variables
 BINARY_NAME=bucketsyncd
-VERSION?=v0.3.0
+VERSION?=v0.3.1
 ARCH?=amd64
 PKG_VERSION=$(VERSION:v%=%)
 BUILD_DIR=build
