@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -55,7 +56,7 @@ func testInboundWithInvalidURL(_ *testing.T) {
 	// If we reach here without panic, the function handled the error gracefully
 }
 
-func testInboundWithAMQPFailure(_ *testing.T) {
+func testInboundWithAMQPFailure(t *testing.T) {
 	connections = []*amqp.Connection{}
 	config = Config{
 		Remotes: []Remote{{
@@ -72,9 +73,22 @@ func testInboundWithAMQPFailure(_ *testing.T) {
 		Queue: "test-queue", Remote: "test-remote", Destination: "/tmp/test",
 	}
 
-	// This will exercise the early validation and connection logic
-	inbound(inboundConfig)
-	// If we reach here without panic, the function handled the error gracefully
+	// Run inbound in a goroutine since it now retries indefinitely
+	done := make(chan bool)
+	go func() {
+		inbound(inboundConfig)
+		done <- true
+	}()
+
+	// Wait for a short time to allow connection attempts
+	select {
+	case <-done:
+		// Function returned (unexpected for invalid connection)
+	case <-time.After(2 * time.Second):
+		// Expected timeout - function is retrying
+	}
+
+	// Test passes if we reach here without hanging
 }
 
 // TestOutboundFunctionCoverage tests the outbound function with various inputs
