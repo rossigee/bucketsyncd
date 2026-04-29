@@ -17,15 +17,15 @@ func SendNotification(title, message string) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "linux":
-		cmd = exec.Command("notify-send", title, message)
+		cmd = exec.Command("notify-send", title, message) // #nosec G204 - This is intentional use of exec.Command for notifications
 	case "darwin":
 		// Use osascript for macOS notifications
 		script := fmt.Sprintf(`display notification "%s" with title "%s"`, message, title)
-		cmd = exec.Command("osascript", "-e", script)
+		cmd = exec.Command("osascript", "-e", script) // #nosec G204 - This is intentional use of exec.Command for notifications
 	case "windows":
 		// Use PowerShell for Windows notifications
 		script := fmt.Sprintf(`Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.MessageBox]::Show('%s', '%s')`, message, title)
-		cmd = exec.Command("powershell", "-Command", script)
+		cmd = exec.Command("powershell", "-Command", script) // #nosec G204 - This is intentional use of exec.Command for notifications
 	default:
 		log.Warn("Notifications not supported on this platform")
 		return
