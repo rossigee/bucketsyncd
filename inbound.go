@@ -48,6 +48,10 @@ var connections []*amqp.Connection
 
 // nolint:gocognit,funlen // This function handles the main AMQP processing logic
 func inbound(in Inbound) {
+	inboundWithContext(context.Background(), in)
+}
+
+func inboundWithContext(ctx context.Context, in Inbound) {
 	lf := log.Fields{
 		"workflow": in.Name,
 	}
@@ -65,7 +69,14 @@ func inbound(in Inbound) {
 	log.WithFields(lf).Info("configuring AMQP client for '", in.Description, "'")
 
 	// Reconnection loop
-	for attempt := 0; ; attempt++ {
+	for {
+		select {
+		case <-ctx.Done():
+			log.WithFields(lf).Info("inbound cancelled")
+			return
+		default:
+		}
+
 		amqpConfig := amqp.Config{
 			Properties: amqp.NewConnectionProperties(),
 		}

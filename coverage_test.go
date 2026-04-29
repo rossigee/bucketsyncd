@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 	"path/filepath"
@@ -73,22 +74,13 @@ func testInboundWithAMQPFailure(t *testing.T) {
 		Queue: "test-queue", Remote: "test-remote", Destination: "/tmp/test",
 	}
 
-	// Run inbound in a goroutine since it now retries indefinitely
-	done := make(chan bool)
-	go func() {
-		inbound(inboundConfig)
-		done <- true
-	}()
+	// Use context with timeout to prevent hanging
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 
-	// Wait for a short time to allow connection attempts
-	select {
-	case <-done:
-		// Function returned (unexpected for invalid connection)
-	case <-time.After(2 * time.Second):
-		// Expected timeout - function is retrying
-	}
-
-	// Test passes if we reach here without hanging
+	// This will exercise the early validation and connection logic with timeout
+	inboundWithContext(ctx, inboundConfig)
+	// Test passes if we reach here without hanging (context cancelled the retries)
 }
 
 // TestOutboundFunctionCoverage tests the outbound function with various inputs
