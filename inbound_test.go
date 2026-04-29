@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 )
@@ -156,8 +158,12 @@ func TestInboundFunctionExecution(t *testing.T) {
 		}
 	}()
 
+	// Use context with timeout to prevent hanging on reconnection
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
 	// Call the inbound function - this should cover the initialization code
-	inbound(inboundConfig)
+	inboundWithContext(ctx, inboundConfig)
 
 	// If we get here, the function initialized properly (even if it failed later)
 	// The main goal is to get coverage of the function's entry and setup logic
