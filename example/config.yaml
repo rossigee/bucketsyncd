@@ -3,6 +3,9 @@
 log_level: debug
 #log_level: info
 
+# Enable desktop notifications for uploads/downloads
+enable_notifications: true
+
 # Remote buckets to sync to/from
 remotes:
   - name: minio1

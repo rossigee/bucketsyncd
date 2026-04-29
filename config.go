@@ -37,11 +37,12 @@ type Outbound struct {
 }
 
 type Config struct {
-	LogLevel string     `yaml:"log_level"`
-	LogJSON  bool       `yaml:"log_json"`
-	Outbound []Outbound `yaml:"outbound"`
-	Inbound  []Inbound  `yaml:"inbound"`
-	Remotes  []Remote   `yaml:"remotes"`
+	LogLevel            string     `yaml:"log_level"`
+	LogJSON             bool       `yaml:"log_json"`
+	EnableNotifications bool       `yaml:"enable_notifications"`
+	Outbound            []Outbound `yaml:"outbound"`
+	Inbound             []Inbound  `yaml:"inbound"`
+	Remotes             []Remote   `yaml:"remotes"`
 }
 
 func readConfig(filename string) error {
