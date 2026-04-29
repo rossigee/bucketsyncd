@@ -64,6 +64,7 @@ remotes:
 
 // verifyIntegrationConfigCounts verifies configuration counts
 func verifyIntegrationConfigCounts(t *testing.T) {
+	configMutex.RLock()
 	if config.LogLevel != debugLevel {
 		t.Errorf("Expected log level 'debug', got '%s'", config.LogLevel)
 	}
@@ -79,10 +80,12 @@ func verifyIntegrationConfigCounts(t *testing.T) {
 	if len(config.Remotes) != 1 {
 		t.Errorf("Expected 1 remote config, got %d", len(config.Remotes))
 	}
+	configMutex.RUnlock()
 }
 
 // verifyIntegrationConfigDetails verifies specific configuration details
 func verifyIntegrationConfigDetails(t *testing.T) {
+	configMutex.RLock()
 	// Test outbound configuration
 	outbound := config.Outbound[0]
 	if outbound.Name != "integration-outbound" {
@@ -108,6 +111,7 @@ func verifyIntegrationConfigDetails(t *testing.T) {
 	if remote.Name != "integration-remote" {
 		t.Errorf("Expected remote name 'integration-remote', got '%s'", remote.Name)
 	}
+	configMutex.RUnlock()
 
 	if remote.Endpoint != "localhost:9000" {
 		t.Errorf("Expected endpoint 'localhost:9000', got '%s'", remote.Endpoint)
@@ -212,6 +216,7 @@ remotes:
 
 // verifyMultiConfigCounts verifies multiple configuration counts
 func verifyMultiConfigCounts(t *testing.T) {
+	configMutex.RLock()
 	if len(config.Outbound) != 2 {
 		t.Errorf("Expected 2 outbound configs, got %d", len(config.Outbound))
 	}
@@ -223,10 +228,12 @@ func verifyMultiConfigCounts(t *testing.T) {
 	if len(config.Remotes) != 2 {
 		t.Errorf("Expected 2 remote configs, got %d", len(config.Remotes))
 	}
+	configMutex.RUnlock()
 }
 
 // verifyMultiConfigSpecifics verifies specific configuration details
 func verifyMultiConfigSpecifics(t *testing.T) {
+	configMutex.RLock()
 	// Test specific configurations
 	if config.LogJSON != true {
 		t.Error("Expected log_json to be true")
@@ -241,6 +248,7 @@ func verifyMultiConfigSpecifics(t *testing.T) {
 	if sensitiveOutbound.ProcessWith != "/usr/bin/encrypt" {
 		t.Errorf("Expected ProcessWith '/usr/bin/encrypt', got '%s'", sensitiveOutbound.ProcessWith)
 	}
+	configMutex.RUnlock()
 }
 
 func TestMultipleConfigurations(t *testing.T) {
@@ -326,6 +334,7 @@ remotes: []
 	// Check defaults (values may be retained from previous tests)
 	// Note: config is a global variable that may retain values from other tests
 
+	configMutex.RLock()
 	if len(config.Outbound) != 0 {
 		t.Errorf("Expected 0 outbound configs, got %d", len(config.Outbound))
 	}
@@ -337,6 +346,7 @@ remotes: []
 	if len(config.Remotes) != 0 {
 		t.Errorf("Expected 0 remote configs, got %d", len(config.Remotes))
 	}
+	configMutex.RUnlock()
 }
 
 // generateLargeConfigContent generates large configuration content

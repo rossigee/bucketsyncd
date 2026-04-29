@@ -10,7 +10,10 @@ import (
 
 // SendNotification sends a desktop notification
 func SendNotification(title, message string) {
-	if !config.EnableNotifications || message == "" {
+	configMutex.RLock()
+	enableNotifications := config.EnableNotifications
+	configMutex.RUnlock()
+	if !enableNotifications || message == "" {
 		return
 	}
 

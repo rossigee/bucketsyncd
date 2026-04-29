@@ -41,18 +41,25 @@ func TestSendNotification(t *testing.T) {
 // TestNotificationConfig tests that the config option works
 func TestNotificationConfig(t *testing.T) {
 	// Test parsing config with notifications
+	configMutex.Lock()
 	config = Config{}
-	// The config is parsed in readConfig, but for this test we can just set it
 	config.EnableNotifications = true
+	configMutex.Unlock()
 
+	configMutex.RLock()
 	if !config.EnableNotifications {
 		t.Error("EnableNotifications should be true")
 	}
+	configMutex.RUnlock()
 
+	configMutex.Lock()
 	config.EnableNotifications = false
+	configMutex.Unlock()
+	configMutex.RLock()
 	if config.EnableNotifications {
 		t.Error("EnableNotifications should be false")
 	}
+	configMutex.RUnlock()
 }
 
 // TestSendNotificationEmptyMessage tests with empty messages

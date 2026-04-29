@@ -42,7 +42,9 @@ func main() {
 		panic(err)
 	}
 
+	configMutex.RLock()
 	log.Info(fmt.Sprintf("Loaded %d remotes", len(config.Remotes)))
+	configMutex.RUnlock()
 
 	// Configure logging
 	configureLogging()
@@ -73,12 +75,17 @@ func parseCommandLine() bool {
 }
 
 func configureLogging() {
+	configMutex.RLock()
+	logLevel := config.LogLevel
+	logJSON := config.LogJSON
+	configMutex.RUnlock()
+
 	log.SetFormatter(&log.TextFormatter{
 		DisableColors: true,
 		FullTimestamp: true,
 	})
 
-	switch config.LogLevel {
+	switch logLevel {
 	case debugLevel:
 		log.SetLevel(log.DebugLevel)
 	case infoLevel:
@@ -86,10 +93,10 @@ func configureLogging() {
 	case warnLevel:
 		log.SetLevel(log.WarnLevel)
 	}
-	if config.LogLevel == debugLevel {
+	if logLevel == debugLevel {
 		log.SetLevel(log.DebugLevel)
 	}
-	if config.LogJSON {
+	if logJSON {
 		log.SetFormatter(&log.JSONFormatter{})
 	}
 }
@@ -98,15 +105,22 @@ func runService() {
 	// Stops the program from exiting prematurely
 	done := make(chan bool)
 
+	configMutex.RLock()
+	outboundConfigs := make([]Outbound, len(config.Outbound))
+	copy(outboundConfigs, config.Outbound)
+	inboundConfigs := make([]Inbound, len(config.Inbound))
+	copy(inboundConfigs, config.Inbound)
+	configMutex.RUnlock()
+
 	// Set up watcher for each outbound source
-	for i := 0; i < len(config.Outbound); i++ {
-		o := config.Outbound[i]
+	for i := 0; i < len(outboundConfigs); i++ {
+		o := outboundConfigs[i]
 		outbound(o)
 	}
 
 	// Set up watcher for each inbound source
-	for i := 0; i < len(config.Inbound); i++ {
-		in := config.Inbound[i]
+	for i := 0; i < len(inboundConfigs); i++ {
+		in := inboundConfigs[i]
 		inbound(in)
 	}
 

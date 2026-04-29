@@ -128,6 +128,7 @@ func TestOutboundFunctionCoverage(t *testing.T) {
 			watchers = []fsnotify.Watcher{}
 
 			// Set up basic config
+			configMutex.Lock()
 			config = Config{
 				Remotes: []Remote{
 					{
@@ -138,6 +139,7 @@ func TestOutboundFunctionCoverage(t *testing.T) {
 					},
 				},
 			}
+			configMutex.Unlock()
 
 			// Call outbound function - this will exercise path parsing and watcher setup
 			// The function may fail on file system operations but will exercise the logic
@@ -201,13 +203,16 @@ func TestLogConfiguration(_ *testing.T) {
 	testLevels := []string{"debug", "info", "warn", "error", "unknown"}
 
 	for _, level := range testLevels {
+		configMutex.Lock()
 		config.LogLevel = level
+		configMutex.Unlock()
 
 		// Apply the same logic as main()
 		log.SetFormatter(&log.TextFormatter{
 			DisableColors: true,
 			FullTimestamp: true,
 		})
+		configMutex.RLock()
 		switch config.LogLevel {
 		case debugLevel:
 			log.SetLevel(log.DebugLevel)
@@ -227,6 +232,7 @@ func TestLogConfiguration(_ *testing.T) {
 		if config.LogJSON {
 			log.SetFormatter(&log.JSONFormatter{})
 		}
+		configMutex.RUnlock()
 	}
 }
 
@@ -236,13 +242,17 @@ func TestMainFunctionComponents(t *testing.T) {
 	originalArgs := os.Args
 	originalConfigFilePath := *configFilePath
 	originalHelp := *help
+	configMutex.RLock()
 	originalConfig := config
+	configMutex.RUnlock()
 
 	defer func() {
 		os.Args = originalArgs
 		*configFilePath = originalConfigFilePath
 		*help = originalHelp
+		configMutex.Lock()
 		config = originalConfig
+		configMutex.Unlock()
 	}()
 
 	// Call the separate test functions
@@ -295,6 +305,7 @@ remotes:
 	}
 
 	// Test the processing loops from main()
+	configMutex.RLock()
 	outboundCount := 0
 	for i := 0; i < len(config.Outbound); i++ {
 		o := config.Outbound[i]
@@ -312,6 +323,7 @@ remotes:
 			// This exercises the inbound processing logic from main()
 		}
 	}
+	configMutex.RUnlock()
 
 	if outboundCount != 1 {
 		t.Errorf("Expected 1 outbound processed, got %d", outboundCount)

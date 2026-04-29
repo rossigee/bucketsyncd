@@ -202,6 +202,7 @@ func inboundWithContext(ctx context.Context, in Inbound) {
 					creds := credentials.Credentials{}
 					credsFound := false
 					var remote Remote
+					configMutex.RLock()
 					for _, remote = range config.Remotes {
 						if remote.Name == in.Remote {
 							creds = *credentials.NewStaticV4(remote.AccessKey, remote.SecretKey, "")
@@ -209,6 +210,7 @@ func inboundWithContext(ctx context.Context, in Inbound) {
 							break
 						}
 					}
+					configMutex.RUnlock()
 					if !credsFound {
 						log.WithFields(lf).Error("no credentials found")
 						if nackErr := d.Nack(false, true); nackErr != nil { // Requeue, maybe config issue

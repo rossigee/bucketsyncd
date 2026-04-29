@@ -183,9 +183,11 @@ func outbound(o Outbound) {
 				} else {
 					// Handle S3 upload (existing logic)
 					endpoint := u.Host
+					configMutex.RLock()
 					for _, remote := range config.Remotes {
 						log.Info(fmt.Sprintf("Matching endpoint %s with remote %s", endpoint, remote.Endpoint))
 					}
+					configMutex.RUnlock()
 					tokens := strings.Split(u.Path, "/")
 					const minTokens = 2
 					if len(tokens) < minTokens {
@@ -204,12 +206,14 @@ func outbound(o Outbound) {
 					// Determine remote to use to create a new MinIO client
 					creds := credentials.Credentials{}
 					credsFound := false
+					configMutex.RLock()
 					for _, remote := range config.Remotes {
 						if remote.Endpoint == endpoint {
 							creds = *credentials.NewStaticV4(remote.AccessKey, remote.SecretKey, "")
 							credsFound = true
 						}
 					}
+					configMutex.RUnlock()
 					if !credsFound {
 						log.WithFields(lf).Error("No S3 credentials found for endpoint: ", endpoint)
 						return

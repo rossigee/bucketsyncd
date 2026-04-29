@@ -60,6 +60,7 @@ func TestReadConfig(t *testing.T) {
 }
 
 func validateConfig(t *testing.T) {
+	configMutex.RLock()
 	// Verify config was parsed correctly
 	if config.LogLevel != infoLevel {
 		t.Errorf("Expected log level 'info', got '%s'", config.LogLevel)
@@ -76,6 +77,7 @@ func validateConfig(t *testing.T) {
 	validateOutboundConfig(t)
 	validateInboundConfig(t)
 	validateRemoteConfig(t)
+	configMutex.RUnlock()
 }
 
 func validateOutboundConfig(t *testing.T) {

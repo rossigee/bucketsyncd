@@ -4,11 +4,13 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 )
 
 var config Config
+var configMutex sync.RWMutex
 
 type Remote struct {
 	Name      string `yaml:"name"`
@@ -54,7 +56,9 @@ func readConfig(filename string) error {
 	if err != nil {
 		return err
 	}
+	configMutex.Lock()
 	err = yaml.Unmarshal(yamlFile, &config)
+	configMutex.Unlock()
 	if err != nil {
 		return err
 	}
