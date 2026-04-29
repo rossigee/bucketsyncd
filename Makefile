@@ -2,7 +2,7 @@
 
 # Variables
 BINARY_NAME=bucketsyncd
-VERSION?=v0.3.1
+VERSION?=v0.4.0
 ARCH?=amd64
 PKG_VERSION=$(VERSION:v%=%)
 BUILD_DIR=build
@@ -14,7 +14,7 @@ all: build
 # Build the binary
 build:
 	mkdir -p $(BUILD_DIR)
-	go build -ldflags="-s -w" -o "$(BUILD_DIR)/$(BINARY_NAME)" .
+	go build -ldflags="-s -w -X main.version=$(VERSION) -X main.buildTime=$(shell date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=$(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)" -o "$(BUILD_DIR)/$(BINARY_NAME)" .
 
 # Run tests
 test:

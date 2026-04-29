@@ -28,12 +28,13 @@ type Inbound struct {
 }
 
 type Outbound struct {
-	Name        string `yaml:"name"`
-	Description string `yaml:"description"`
-	Sensitive   bool   `yaml:"sensitive"`
-	Source      string `yaml:"source"`
-	Destination string `yaml:"destination"`
-	ProcessWith string `yaml:"process_with,omitempty"`
+	Name           string   `yaml:"name"`
+	Description    string   `yaml:"description"`
+	Sensitive      bool     `yaml:"sensitive"`
+	Source         string   `yaml:"source"`
+	Destination    string   `yaml:"destination"`
+	IgnorePatterns []string `yaml:"ignore_patterns,omitempty"`
+	ProcessWith    string   `yaml:"process_with,omitempty"`
 }
 
 type Config struct {

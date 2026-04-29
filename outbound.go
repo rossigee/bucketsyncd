@@ -36,11 +36,7 @@ func outbound(o Outbound) {
 		log.WithFields(lf).Error(err)
 		return
 	}
-	defer func() {
-		if err := watcher.Close(); err != nil {
-			log.WithFields(lf).Error("failed to close watcher: ", err)
-		}
-	}()
+
 	watchers = append(watchers, *watcher)
 
 	// Extract folder to watch, and file glob to filter on
@@ -60,17 +56,11 @@ func outbound(o Outbound) {
 					return
 				}
 
-				log.WithFields(lf).WithFields(log.Fields{
-					"name": event.Name,
-					"op":   event.Op,
-				}).Debug("Event")
+				log.Info(fmt.Sprintf("Event received: name=%s op=%d", event.Name, event.Op))
 
-				// Ignore non-Write events
-				if event.Op&fsnotify.Write != fsnotify.Write {
-					log.WithFields(lf).WithFields(log.Fields{
-						"name": event.Name,
-						"op":   event.Op,
-					}).Debug("Ignoring unimportant event type")
+				// Ignore non-Write/Create events
+				if event.Op&(fsnotify.Write|fsnotify.Create) == 0 {
+					log.Info(fmt.Sprintf("Ignoring event: name=%s op=%d", event.Name, event.Op))
 					continue
 				}
 
@@ -83,6 +73,24 @@ func outbound(o Outbound) {
 					}).Debug("Ignoring write event due to glob mismatch")
 					continue
 				}
+
+				// Skip ignored files
+				ignored := false
+				for _, pattern := range o.IgnorePatterns {
+					if glob.Glob(pattern, filename) {
+						ignored = true
+						break
+					}
+				}
+				if ignored {
+					log.WithFields(lf).WithFields(log.Fields{
+						"name": event.Name,
+						"op":   event.Op,
+					}).Debug("Ignoring file due to ignore pattern")
+					continue
+				}
+
+
 
 				// Open the file and prepare to read it
 				f, err := os.Open(event.Name)
@@ -133,10 +141,9 @@ func outbound(o Outbound) {
 
 				// Determine destination type and handle accordingly
 				u, err := url.Parse(o.Destination)
-				if err != nil {
-					log.WithFields(lf).Error("failed to parse destination URL: ", err)
-					return
-				}
+					if err != nil {
+						log.WithFields(lf).Error("failed to upload to S3", err)
+					}
 
 				// Check if this is a WebDAV destination
 				if isWebDAVScheme(u.Scheme) {
@@ -169,11 +176,16 @@ func outbound(o Outbound) {
 						"remote_path": remotePath,
 					}).Info("successfully uploaded file to WebDAV")
 
-					SendNotification("bucketsyncd", fmt.Sprintf("Uploaded %s to WebDAV", filename))
+					message := fmt.Sprintf("Uploaded %s to %s", filename, o.Destination)
+					log.Info(fmt.Sprintf("Sending notification: %s", message))
+					SendNotification("bucketsyncd", message)
 
 				} else {
 					// Handle S3 upload (existing logic)
-					endpoint := u.Hostname()
+					endpoint := u.Host
+					for _, remote := range config.Remotes {
+						log.Info(fmt.Sprintf("Matching endpoint %s with remote %s", endpoint, remote.Endpoint))
+					}
 					tokens := strings.Split(u.Path, "/")
 					const minTokens = 2
 					if len(tokens) < minTokens {
@@ -242,7 +254,9 @@ func outbound(o Outbound) {
 						"size":       fs.Size(),
 					}).Info("uploaded to S3")
 
-					SendNotification("bucketsyncd", fmt.Sprintf("Uploaded %s to S3", filename))
+					message := fmt.Sprintf("Uploaded %s to %s", event.Name, o.Destination)
+					log.Info(fmt.Sprintf("Sending notification: %s", message))
+					SendNotification("bucketsyncd", message)
 				}
 
 			case err, ok := <-watcher.Errors:

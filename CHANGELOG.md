@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.0] - 2026-04-29
+
+### Added
+- Configurable ignore patterns for outbound configurations to skip temporary/partial files
+- Build information logging (version, build time, git commit) on startup
+- Service account support for enhanced security with MinIO
+- Comprehensive test coverage expansion with new unit tests
+- Improved notification messages with file details and empty message prevention
+
+### Changed
+- Notifications now include full file paths and prevent empty notifications
+- File watcher improved to handle Create/Write events and avoid premature watcher closure
+- Endpoint matching fixed to use u.Host instead of u.Hostname() for ports
+- Error handling enhanced with better logging and retry mechanisms
+
+### Fixed
+- Watcher lifecycle management to prevent event loss
+- Configurable file filtering to ignore unwanted files
+- Notification system robustness
+
+### Security
+- Service account credentials with restricted permissions
+- Improved secure credential handling
+
 ## [v0.3.2] - 2026-04-29
 
 ### Fixed

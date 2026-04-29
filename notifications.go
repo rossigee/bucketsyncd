@@ -10,7 +10,7 @@ import (
 
 // SendNotification sends a desktop notification
 func SendNotification(title, message string) {
-	if !config.EnableNotifications {
+	if !config.EnableNotifications || message == "" {
 		return
 	}
 

@@ -286,7 +286,9 @@ func inboundWithContext(ctx context.Context, in Inbound) {
 					"size":     size,
 				}).Info("retrieved remote object to local file")
 
-				SendNotification("bucketsyncd", fmt.Sprintf("Downloaded %s", filepath.Base(key)))
+				message := fmt.Sprintf("Downloaded %s", filepath.Base(key))
+				log.Info(fmt.Sprintf("Sending notification: %s", message))
+				SendNotification("bucketsyncd", message)
 
 					// Acknowledge queued message after successful processing
 					err = d.Ack(false)

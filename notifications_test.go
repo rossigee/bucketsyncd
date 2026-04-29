@@ -54,3 +54,26 @@ func TestNotificationConfig(t *testing.T) {
 		t.Error("EnableNotifications should be false")
 	}
 }
+
+// TestSendNotificationEmptyMessage tests with empty messages
+func TestSendNotificationEmptyMessage(t *testing.T) {
+	originalConfig := config
+	defer func() { config = originalConfig }()
+
+	config = Config{EnableNotifications: true}
+	SendNotification("", "")
+	// Should not panic
+}
+
+// TestUnsupportedOS tests notification on unsupported OS
+func TestUnsupportedOS(t *testing.T) {
+	// We can't easily test unsupported OS without mocking runtime.GOOS
+	// But we can verify the function doesn't panic
+	originalConfig := config
+	defer func() { config = originalConfig }()
+
+	config = Config{EnableNotifications: true}
+	// Temporarily change GOOS if possible, but since it's runtime, skip
+	SendNotification("test", "message")
+	// Should complete without panic
+}

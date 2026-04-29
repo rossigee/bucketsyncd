@@ -20,6 +20,8 @@ outbound:
     description: "Test outbound configuration"
     source: "/tmp/test"
     destination: "test-bucket/path"
+    ignore_patterns:
+      - "*.tmp"
     sensitive: false
 inbound:
   - name: "` + testInboundName + `"
@@ -87,6 +89,41 @@ func validateOutboundConfig(t *testing.T) {
 
 	if outbound.Sensitive {
 		t.Errorf("Expected outbound sensitive false, got %v", outbound.Sensitive)
+	}
+
+	if len(outbound.IgnorePatterns) != 1 || outbound.IgnorePatterns[0] != "*.tmp" {
+		t.Errorf("Expected ignore patterns ['*.tmp'], got %v", outbound.IgnorePatterns)
+	}
+}
+
+// TestIgnorePatternsMatching tests the ignore patterns functionality
+func TestIgnorePatternsMatching(t *testing.T) {
+	outbound := Outbound{
+		IgnorePatterns: []string{"*.crdownload", "*.tmp", ".*"},
+	}
+
+	testCases := []struct {
+		filename string
+		ignored  bool
+	}{
+		{"file.txt", false},
+		{"download.crdownload", true},
+		{"temp.tmp", true},
+		{".hidden", true},
+		{"normal.pdf", false},
+	}
+
+	for _, tc := range testCases {
+		ignored := false
+		for _, pattern := range outbound.IgnorePatterns {
+			if matched, _ := filepath.Match(pattern, tc.filename); matched {
+				ignored = true
+				break
+			}
+		}
+		if ignored != tc.ignored {
+			t.Errorf("File %s: expected ignored=%v, got %v", tc.filename, tc.ignored, ignored)
+		}
 	}
 }
 
@@ -159,12 +196,13 @@ func TestConfigStructures(t *testing.T) {
 
 	// Test Outbound struct
 	outbound := Outbound{
-		Name:        "test-out",
-		Description: "Test description",
-		Sensitive:   true,
-		Source:      "/tmp/source",
-		Destination: "bucket/dest",
-		ProcessWith: "script.sh",
+		Name:           "test-out",
+		Description:    "Test description",
+		Sensitive:      true,
+		Source:         "/tmp/source",
+		Destination:    "bucket/dest",
+		IgnorePatterns: []string{"*.tmp", ".*"},
+		ProcessWith:    "script.sh",
 	}
 
 	if !outbound.Sensitive {

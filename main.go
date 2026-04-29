@@ -12,8 +12,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var (
+	version    = "v0.4.0"
+	buildTime  = "unknown"
+	gitCommit  = "unknown"
+)
+
 const (
-	version    = "v0.3.2"
 	debugLevel = "debug"
 	infoLevel  = "info"
 	warnLevel  = "warn"
@@ -37,8 +42,13 @@ func main() {
 		panic(err)
 	}
 
+	log.Info(fmt.Sprintf("Loaded %d remotes", len(config.Remotes)))
+
 	// Configure logging
 	configureLogging()
+
+	log.Info("starting bucketsyncd")
+	log.Info(fmt.Sprintf("build info: version=%s build_time=%s git_commit=%s", version, buildTime, gitCommit))
 
 	// Start processing
 	runService()

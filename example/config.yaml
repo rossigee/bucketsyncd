@@ -21,30 +21,48 @@ outbound:
     sensitive: false
     source: "/home/rossg/Downloads/bank-statements-company/kasikorn-rossgolderltd/*"
     destination: "s3://minio.golder.lan/bank-statements-company/kasikorn-rossgolderltd"
+    ignore_patterns:
+      - "*.crdownload"
+      - "*.tmp"
+      - ".*"
     process_with: "/home/rossg/obfuscate"
 
   - name: KSK2
     description: Kasikorn Credit Card Account
     source: "/home/rossg/Downloads/bank-statements-company/kasikorn-rasamee/*"
     destination: "s3://minio.golder.lan/bank-statements-company/kasikorn-rasamee"
+    ignore_patterns:
+      - "*.crdownload"
+      - "*.tmp"
+      - ".*"
     sensitive: false
 
   - name: KSK3
     description: Kasikorn Main Family Account
     source: "/home/rossg/Downloads/bank-statements-family/kasikorn-rossigee/*"
     destination: "s3://minio.golder.lan/bank-statements-family/kasikorn-rossigee"
+    ignore_patterns:
+      - "*.crdownload"
+      - "*.tmp"
+      - ".*"
     sensitive: false
 
   - name: WEBDAV1
     description: WebDAV Document Sync
     source: "/home/rossg/Documents/sync/*"
     destination: "webdav://user:password@webdav.example.com/documents"
+    ignore_patterns:
+      - "*.tmp"
+      - ".*"
     sensitive: false
 
   - name: WEBDAV2
     description: Secure WebDAV Backup
     source: "/home/rossg/Backups/important/*"
     destination: "webdavs://backup-user:secure-pass@secure-webdav.example.com/backups"
+    ignore_patterns:
+      - "*.tmp"
+      - ".*"
     sensitive: true
 
 # Inbound means files that should be retrieved from S3 to the local machine when we
