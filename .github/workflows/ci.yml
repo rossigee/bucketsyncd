@@ -151,6 +151,12 @@ jobs:
         ARCH: ${{ matrix.goarch }}
         VERSION: ${{ github.ref_name }}
       run: |
+        # Set version for packaging (use tag or dev version)
+        if [[ "${VERSION}" =~ ^v[0-9] ]]; then
+          PKG_VERSION="${VERSION#v}"
+        else
+          PKG_VERSION="0.0.0-dev"
+        fi
         # Set version (strip 'v' prefix if present)
         PKG_VERSION="${VERSION#v}"
         if [ -z "$PKG_VERSION" ]; then
