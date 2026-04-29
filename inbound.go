@@ -99,7 +99,9 @@ func inbound(in Inbound) {
 		channel, err := conn.Channel()
 		if err != nil {
 			log.WithFields(lf).Error("failed to declare AMQP channel: ", err)
-			conn.Close()
+			if closeErr := conn.Close(); closeErr != nil {
+				log.WithFields(lf).Error("failed to close connection: ", closeErr)
+			}
 			continue
 		}
 		err = channel.QueueBind(
@@ -111,7 +113,9 @@ func inbound(in Inbound) {
 		)
 		if err != nil {
 			log.WithFields(lf).Error("failed to bind to AMQP queue: ", err)
-			conn.Close()
+			if closeErr := conn.Close(); closeErr != nil {
+				log.WithFields(lf).Error("failed to close connection: ", closeErr)
+			}
 			continue
 		}
 		log.WithFields(lf).Debug("queue bound to exchange")
@@ -128,7 +132,9 @@ func inbound(in Inbound) {
 		)
 		if err != nil {
 			log.WithFields(lf).Error("failed to consume messages from AMQP queue: ", err)
-			conn.Close()
+			if closeErr := conn.Close(); closeErr != nil {
+				log.WithFields(lf).Error("failed to close connection: ", closeErr)
+			}
 			continue
 		}
 
@@ -142,7 +148,9 @@ func inbound(in Inbound) {
 					log.WithFields(lf).Warn("deliveries channel closed")
 					// Clean up connection and continue to reconnect
 					if conn != nil && !conn.IsClosed() {
-						conn.Close()
+						if closeErr := conn.Close(); closeErr != nil {
+							log.WithFields(lf).Error("failed to close connection: ", closeErr)
+						}
 					}
 					log.WithFields(lf).Info("reconnecting to AMQP service in 5 seconds")
 					time.Sleep(5 * time.Second)
@@ -284,7 +292,9 @@ func inbound(in Inbound) {
 				}
 				// Clean up connection and continue to reconnect
 				if conn != nil && !conn.IsClosed() {
-					conn.Close()
+					if closeErr := conn.Close(); closeErr != nil {
+						log.WithFields(lf).Error("failed to close connection: ", closeErr)
+					}
 				}
 				log.WithFields(lf).Info("reconnecting to AMQP service in 5 seconds")
 				time.Sleep(5 * time.Second)
