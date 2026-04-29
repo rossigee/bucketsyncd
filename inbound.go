@@ -69,7 +69,7 @@ func inboundWithContext(ctx context.Context, in Inbound) {
 	log.WithFields(lf).Info("configuring AMQP client for '", in.Description, "'")
 
 	// Reconnection loop
-	for {
+	for attempt := 0; ; attempt++ {
 		select {
 		case <-ctx.Done():
 			log.WithFields(lf).Info("inbound cancelled")
