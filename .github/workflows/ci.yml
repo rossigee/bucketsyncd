@@ -157,11 +157,6 @@ jobs:
         else
           PKG_VERSION="0.0.0-dev"
         fi
-        # Set version (strip 'v' prefix if present)
-        PKG_VERSION="${VERSION#v}"
-        if [ -z "$PKG_VERSION" ]; then
-          PKG_VERSION="dev"
-        fi
 
         # Create Debian package structure
         mkdir -p build/debian/DEBIAN
