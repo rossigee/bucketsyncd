@@ -1,3 +1,14 @@
+bucketsyncd (0.4.2-1) unstable; urgency=medium
+
+  * Security fix: sanitize notification strings against command injection
+  * Fix: outbound watcher goroutine no longer dies on first transient error
+  * Fix: inbound AMQP reconnection busy-spin on closed channel
+  * Fix: defer-in-loop resource leaks (file handles, contexts)
+  * Fix: integer overflow in exponential backoff (gosec G115)
+  * Deps: fsnotify, klauspost/compress, golang.org/x/{crypto,net,sys,text}
+
+ -- Ross Golder <ross@golder.org>  Fri, 16 May 2026 11:25:00 +0000
+
 bucketsyncd (0.4.1-1) unstable; urgency=medium
 
   * Updated to version 0.4.1.

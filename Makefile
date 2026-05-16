@@ -1,5 +1,5 @@
 BINARY_NAME := bucketsyncd
-VERSION := 0.4.1
+VERSION := 0.4.2
 
 LDFLAGS=-ldflags "-X main.version=$(VERSION)"
 
