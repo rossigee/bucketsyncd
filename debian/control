@@ -1,0 +1,15 @@
+Source: bucketsyncd
+Section: misc
+Priority: optional
+Maintainer: Ross Golder <ross@golder.org>
+Build-Depends: debhelper (>= 10)
+Standards-Version: 3.9.8
+Homepage: https://github.com/rossigee/bucketsyncd
+
+Package: bucketsyncd
+Architecture: amd64 arm64
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Bucket synchronisation service for automatic file sync
+ This application provides a bucket synchronisation service that automatically
+ downloads files to a local folder as they appear in a remote bucket, or uploads
+ files to a remote bucket or WebDAV server from a local folder.

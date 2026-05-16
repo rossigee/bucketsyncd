@@ -1,0 +1,12 @@
+bucketsyncd (0.4.1-1) unstable; urgency=medium
+
+  * Updated to version 0.4.1.
+
+ -- Ross Golder <ross@golder.org>  Sat, 16 May 2026 17:32:07 +0700
+
+
+bucketsyncd (0.4.0-1) unstable; urgency=medium
+
+  * Initial release.
+
+ -- Ross Golder <ross@golder.org>  Sat, 16 May 2026 00:00:00 +0000
