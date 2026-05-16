@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.2] - 2026-05-16
+
+### Fixed
+- Outbound watcher goroutine now survives transient errors (file-open failures, missing credentials, MinIO client creation errors) via `continue` instead of `return`, preventing permanent loss of file-watch coverage
+- Inbound AMQP reconnection loop now correctly exits the inner select loop on channel close via labeled `break`, eliminating a busy-spin that prevented reconnection
+- `defer` inside event/message processing loops replaced with explicit resource cleanup, fixing file-handle and context leaks that accumulated until goroutine exit
+- Missing `continue` after `url.Parse` failure in outbound handler (previously continued with a nil/partial URL)
+- Watcher slice changed to pointer type (`[]*fsnotify.Watcher`) enabling test teardown to properly stop goroutines and eliminate data races
+
+### Security
+- Notification messages and titles are now sanitized before interpolation into macOS AppleScript and Windows PowerShell command strings, preventing command injection via crafted filenames
+- Removed redundant `username` and `password` fields from `WebDAVClient` struct — credentials already held by the gowebdav client, extra copies increased in-memory exposure
+
+### Changed
+- Exponential backoff in retry helpers uses multiplication instead of `int → uint` bit-shift to avoid CWE-190 integer overflow (gosec G115)
+- Noisy info-level log loop that printed all remote endpoints on every S3 event removed
+
+### Dependencies
+- `fsnotify` v1.9.0 → v1.10.1
+- `klauspost/compress` v1.18.5 → v1.18.6
+- `golang.org/x/crypto` v0.50.0 → v0.51.0
+- `golang.org/x/net` v0.53.0 → v0.54.0
+- `golang.org/x/sys` v0.43.0 → v0.44.0
+- `golang.org/x/text` v0.36.0 → v0.37.0
+
 ## [v0.4.0] - 2026-04-29
 
 ### Added

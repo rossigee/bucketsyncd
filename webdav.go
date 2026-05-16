@@ -13,10 +13,8 @@ import (
 
 // WebDAVClient wraps the gowebdav client with additional functionality
 type WebDAVClient struct {
-	client   *gowebdav.Client
-	baseURL  *url.URL
-	username string
-	password string
+	client  *gowebdav.Client
+	baseURL *url.URL
 }
 
 // NewWebDAVClient creates a new WebDAV client from a URL
@@ -46,10 +44,8 @@ func NewWebDAVClient(urlStr string) (*WebDAVClient, error) {
 	client := gowebdav.NewClient(baseURL.String(), username, password)
 
 	return &WebDAVClient{
-		client:   client,
-		baseURL:  baseURL,
-		username: username,
-		password: password,
+		client:  client,
+		baseURL: baseURL,
 	}, nil
 }
 

@@ -88,8 +88,16 @@ func TestOutboundFunctionCoverage(t *testing.T) {
 	// Save original config and watchers
 	originalConfig := config
 	originalWatchers := watchers
+	// Reset watchers once so we can track only those added by this test.
+	watchers = []*fsnotify.Watcher{}
 	defer func() {
+		// Close all watchers added during this test so goroutines don't race with later tests.
+		for _, w := range watchers {
+			_ = w.Close()
+		}
+		configMutex.Lock()
 		config = originalConfig
+		configMutex.Unlock()
 		watchers = originalWatchers
 	}()
 
@@ -114,7 +122,7 @@ func TestOutboundFunctionCoverage(t *testing.T) {
 			outbound: Outbound{
 				Name:        "test-temp-dir",
 				Description: "Test with valid temp directory",
-				Source:      "/tmp/*",
+				Source:      t.TempDir() + "/*",
 				Destination: "s3://test-bucket/uploads/",
 				Sensitive:   false,
 			},
@@ -124,9 +132,6 @@ func TestOutboundFunctionCoverage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(_ *testing.T) {
-			// Reset watchers for each test
-			watchers = []fsnotify.Watcher{}
-
 			// Set up basic config
 			configMutex.Lock()
 			config = Config{
@@ -144,9 +149,6 @@ func TestOutboundFunctionCoverage(t *testing.T) {
 			// Call outbound function - this will exercise path parsing and watcher setup
 			// The function may fail on file system operations but will exercise the logic
 			outbound(tt.outbound)
-
-			// Check that some processing occurred (watchers might be modified)
-			// This verifies the function executed its logic paths
 		})
 	}
 }
@@ -375,7 +377,7 @@ func TestWatcherGlobalAccess(t *testing.T) {
 	// Test modifying watchers slice (as outbound function would do)
 	watcher, err := fsnotify.NewWatcher()
 	if err == nil {
-		watchers = append(watchers, *watcher)
+		watchers = append(watchers, watcher)
 		if closeErr := watcher.Close(); closeErr != nil {
 			t.Logf("Failed to close watcher: %v", closeErr)
 		}

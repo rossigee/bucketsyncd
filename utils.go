@@ -13,7 +13,12 @@ func RetryOperation(operation func() error, maxRetries int) error {
 			return nil
 		}
 		if i < maxRetries-1 {
-			time.Sleep(time.Duration(1<<uint(i)) * time.Second) // Exponential backoff
+			// Multiply rather than bit-shift to avoid int→uint conversion flagged by G115.
+			delay := time.Second
+			for j := 0; j < i; j++ {
+				delay *= 2
+			}
+			time.Sleep(delay)
 		}
 	}
 	return err

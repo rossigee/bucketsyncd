@@ -20,8 +20,8 @@ import (
 
 // S3Event represents the structure of an S3 event notification
 type S3Event struct {
-	EventName string      `json:"EventName"`
-	Records   []S3Record  `json:"Records"`
+	EventName string     `json:"EventName"`
+	Records   []S3Record `json:"Records"`
 }
 
 type S3Record struct {
@@ -41,8 +41,6 @@ type ObjectInfo struct {
 	Key  string  `json:"key"`
 	Size float64 `json:"size"`
 }
-
-
 
 var connections []*amqp.Connection
 
@@ -83,8 +81,12 @@ func inboundWithContext(ctx context.Context, in Inbound) {
 		amqpConfig.Properties.SetClientConnectionName("bucketsyncd")
 		conn, err := amqp.DialConfig(in.Source, amqpConfig)
 		if err != nil {
-			backoffSeconds := 1 << uint(attempt) // Exponential backoff
-			if backoffSeconds > 300 {              // Cap at 5 minutes
+			// Exponential backoff capped at 5 minutes, avoiding int→uint overflow
+			backoffSeconds := 1
+			for i := 0; i < attempt && backoffSeconds < 300; i++ {
+				backoffSeconds *= 2
+			}
+			if backoffSeconds > 300 {
 				backoffSeconds = 300
 			}
 			log.WithFields(lf).WithFields(log.Fields{
@@ -151,13 +153,13 @@ func inboundWithContext(ctx context.Context, in Inbound) {
 
 		log.WithFields(lf).Info("AMQP consumer started, processing messages")
 
-		// Message processing loop
+		// Message processing loop — use a label so inner breaks reach the reconnection loop
+	messageLoop:
 		for {
 			select {
 			case d, ok := <-deliveries:
 				if !ok {
 					log.WithFields(lf).Warn("deliveries channel closed")
-					// Clean up connection and continue to reconnect
 					if conn != nil && !conn.IsClosed() {
 						if closeErr := conn.Close(); closeErr != nil {
 							log.WithFields(lf).Error("failed to close connection: ", closeErr)
@@ -165,14 +167,12 @@ func inboundWithContext(ctx context.Context, in Inbound) {
 					}
 					log.WithFields(lf).Info("reconnecting to AMQP service in 5 seconds")
 					time.Sleep(5 * time.Second)
-					continue
+					break messageLoop
 				}
 
 				// Parse JSON payload
 				var s3Event S3Event
-				var err error
-				err = json.Unmarshal(d.Body, &s3Event)
-				if err != nil {
+				if err := json.Unmarshal(d.Body, &s3Event); err != nil {
 					log.WithFields(lf).Error("failed to parse JSON payload: ", err)
 					if nackErr := d.Nack(false, true); nackErr != nil { // Requeue for retry
 						log.WithFields(lf).Error("failed to nack message: ", nackErr)
@@ -182,7 +182,6 @@ func inboundWithContext(ctx context.Context, in Inbound) {
 
 				// Process each record in the event
 				for _, record := range s3Event.Records {
-					bucketName := record.S3.Bucket.Name
 					key, err := url.QueryUnescape(record.S3.Object.Key)
 					if err != nil {
 						log.WithFields(lf).Errorf("invalid URL-encoded key: %s", record.S3.Object.Key)
@@ -191,110 +190,23 @@ func inboundWithContext(ctx context.Context, in Inbound) {
 						}
 						continue
 					}
-					size := record.S3.Object.Size
+
 					log.WithFields(lf).WithFields(log.Fields{
-						"bucket": bucketName,
+						"bucket": record.S3.Bucket.Name,
 						"key":    key,
-						"size":   size,
+						"size":   record.S3.Object.Size,
 					}).Debugf("event '%s' received", s3Event.EventName)
 
-					// Determine remote to use to create a new MinIO client
-					creds := credentials.Credentials{}
-					credsFound := false
-					var remote Remote
-					configMutex.RLock()
-					for _, remote = range config.Remotes {
-						if remote.Name == in.Remote {
-							creds = *credentials.NewStaticV4(remote.AccessKey, remote.SecretKey, "")
-							credsFound = true
-							break
-						}
-					}
-					configMutex.RUnlock()
-					if !credsFound {
-						log.WithFields(lf).Error("no credentials found")
-						if nackErr := d.Nack(false, true); nackErr != nil { // Requeue, maybe config issue
-							log.WithFields(lf).Error("failed to nack message: ", nackErr)
-						}
-						continue
-					}
-					log.WithFields(lf).Debugf("connecting to endpoint '%s'", remote.Endpoint)
-					mc, err := minio.New(remote.Endpoint, &minio.Options{
-						Creds:  &creds,
-						Secure: true,
-					})
-					if err != nil {
-						log.WithFields(lf).Error("failed to create MinIO client: ", err)
+					if err := downloadRecord(ctx, lf, record.S3.Bucket.Name, key, in); err != nil {
+						log.WithFields(lf).Error("failed to process record: ", err)
 						if nackErr := d.Nack(false, true); nackErr != nil {
 							log.WithFields(lf).Error("failed to nack message: ", nackErr)
 						}
 						continue
 					}
-
-					// Fetch given file from object storage
-					opts := minio.GetObjectOptions{}
-					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-					defer cancel()
-					minioObj, err := mc.GetObject(ctx, bucketName, key, opts)
-					if err != nil {
-						log.WithFields(lf).Error("failed to fetch object from MinIO: ", err)
-						if nackErr := d.Nack(false, true); nackErr != nil {
-							log.WithFields(lf).Error("failed to nack message: ", nackErr)
-						}
-						continue
-					}
-					defer func() {
-						if err := minioObj.Close(); err != nil {
-							log.WithFields(lf).Error("failed to close object: ", err)
-						}
-					}()
-
-					localFilename := fmt.Sprintf("%s/%s", in.Destination, filepath.Base(key))
-					const filePerms = 0600
-					// #nosec G304 - This is intentional file creation in configured destination
-					localFile, err := os.OpenFile(localFilename, os.O_RDWR|os.O_CREATE, filePerms)
-					if err != nil {
-						log.WithFields(lf).Error("failed to create local file: ", err)
-						if nackErr := d.Nack(false, true); nackErr != nil {
-							log.WithFields(lf).Error("failed to nack message: ", nackErr)
-						}
-						continue
-					}
-					defer func() {
-						if err := localFile.Close(); err != nil {
-							log.WithFields(lf).Error("failed to close local file: ", err)
-						}
-					}()
-
-					stat, err := minioObj.Stat()
-					if err != nil {
-						log.WithFields(lf).Error("failed to get object stat: ", err)
-						if nackErr := d.Nack(false, true); nackErr != nil {
-							log.WithFields(lf).Error("failed to nack message: ", nackErr)
-						}
-						continue
-					}
-
-					if _, err := io.CopyN(localFile, minioObj, stat.Size); err != nil {
-						log.WithFields(lf).Error("failed to copy file from reader: ", err)
-						if nackErr := d.Nack(false, true); nackErr != nil {
-							log.WithFields(lf).Error("failed to nack message: ", nackErr)
-						}
-						continue
-					}
-
-				log.WithFields(lf).WithFields(log.Fields{
-					"filename": localFilename,
-					"size":     size,
-				}).Info("retrieved remote object to local file")
-
-				message := fmt.Sprintf("Downloaded %s", filepath.Base(key))
-				log.Info(fmt.Sprintf("Sending notification: %s", message))
-				SendNotification("bucketsyncd", message)
 
 					// Acknowledge queued message after successful processing
-					err = d.Ack(false)
-					if err != nil {
+					if err := d.Ack(false); err != nil {
 						log.WithFields(lf).Error("failed to acknowledge AMQP message: ", err)
 					}
 				}
@@ -307,7 +219,6 @@ func inboundWithContext(ctx context.Context, in Inbound) {
 						"error": connErr,
 					}).Warn("AMQP connection closed, attempting reconnection")
 				}
-				// Clean up connection and continue to reconnect
 				if conn != nil && !conn.IsClosed() {
 					if closeErr := conn.Close(); closeErr != nil {
 						log.WithFields(lf).Error("failed to close connection: ", closeErr)
@@ -315,10 +226,86 @@ func inboundWithContext(ctx context.Context, in Inbound) {
 				}
 				log.WithFields(lf).Info("reconnecting to AMQP service in 5 seconds")
 				time.Sleep(5 * time.Second)
-				continue
+				break messageLoop
 			}
 		}
 	}
+}
+
+// downloadRecord fetches a single S3 object and writes it to the configured destination.
+// Extracted from the message-processing loop so defers are scoped to the function call.
+func downloadRecord(ctx context.Context, lf log.Fields, bucketName, key string, in Inbound) error {
+	// Determine remote credentials
+	creds := credentials.Credentials{}
+	credsFound := false
+	var remote Remote
+	configMutex.RLock()
+	for _, r := range config.Remotes {
+		if r.Name == in.Remote {
+			remote = r
+			creds = *credentials.NewStaticV4(r.AccessKey, r.SecretKey, "")
+			credsFound = true
+			break
+		}
+	}
+	configMutex.RUnlock()
+	if !credsFound {
+		return fmt.Errorf("no credentials found for remote %q", in.Remote)
+	}
+
+	log.WithFields(lf).Debugf("connecting to endpoint '%s'", remote.Endpoint)
+	mc, err := minio.New(remote.Endpoint, &minio.Options{
+		Creds:  &creds,
+		Secure: true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create MinIO client: %w", err)
+	}
+
+	fetchCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	minioObj, err := mc.GetObject(fetchCtx, bucketName, key, minio.GetObjectOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to fetch object from MinIO: %w", err)
+	}
+	defer func() {
+		if err := minioObj.Close(); err != nil {
+			log.WithFields(lf).Error("failed to close object: ", err)
+		}
+	}()
+
+	stat, err := minioObj.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to get object stat: %w", err)
+	}
+
+	localFilename := fmt.Sprintf("%s/%s", in.Destination, filepath.Base(key))
+	const filePerms = 0600
+	// #nosec G304 - This is intentional file creation in configured destination
+	localFile, err := os.OpenFile(localFilename, os.O_RDWR|os.O_CREATE, filePerms)
+	if err != nil {
+		return fmt.Errorf("failed to create local file: %w", err)
+	}
+	defer func() {
+		if err := localFile.Close(); err != nil {
+			log.WithFields(lf).Error("failed to close local file: ", err)
+		}
+	}()
+
+	if _, err := io.CopyN(localFile, minioObj, stat.Size); err != nil {
+		return fmt.Errorf("failed to copy file from reader: %w", err)
+	}
+
+	log.WithFields(lf).WithFields(log.Fields{
+		"filename": localFilename,
+		"size":     stat.Size,
+	}).Info("retrieved remote object to local file")
+
+	message := fmt.Sprintf("Downloaded %s", filepath.Base(key))
+	SendNotification("bucketsyncd", message)
+
+	return nil
 }
 
 func inboundClose() {
