@@ -13,9 +13,9 @@ import (
 )
 
 var (
-	version    = "v0.4.2"
-	buildTime  = "unknown"
-	gitCommit  = "unknown"
+	version   = "v0.4.2"
+	buildTime = "unknown"
+	gitCommit = "unknown"
 )
 
 const (

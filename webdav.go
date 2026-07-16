@@ -7,8 +7,8 @@ import (
 	"path"
 	"strings"
 
-	"github.com/studio-b12/gowebdav"
 	log "github.com/sirupsen/logrus"
+	"github.com/studio-b12/gowebdav"
 )
 
 // WebDAVClient wraps the gowebdav client with additional functionality

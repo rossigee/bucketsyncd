@@ -51,7 +51,7 @@ func mockWebDAVServer(t *testing.T) *httptest.Server {
 				w.WriteHeader(207) // Multi-Status
 				response := `<?xml version="1.0" encoding="utf-8"?>
 <d:multistatus xmlns:d="DAV:">`
-				
+
 				// Add directory itself
 				response += fmt.Sprintf(`
   <d:response>
@@ -80,7 +80,7 @@ func mockWebDAVServer(t *testing.T) *httptest.Server {
   </d:response>`, filePath, len(files[filePath]))
 					}
 				}
-				
+
 				response += `
 </d:multistatus>`
 				_, _ = fmt.Fprint(w, response)
@@ -184,7 +184,7 @@ func TestWebDAVClient_NewWebDAVClient(t *testing.T) {
 
 func TestWebDAVClient_Upload(t *testing.T) {
 	server := mockWebDAVServer(t)
-	
+
 	// Create client pointing to mock server
 	client, err := NewWebDAVClient(server.URL)
 	if err != nil {
@@ -207,7 +207,7 @@ func TestWebDAVClient_Upload(t *testing.T) {
 
 func TestWebDAVClient_Download(t *testing.T) {
 	server := mockWebDAVServer(t)
-	
+
 	client, err := NewWebDAVClient(server.URL)
 	if err != nil {
 		t.Fatalf("failed to create WebDAV client: %v", err)
@@ -242,7 +242,7 @@ func TestWebDAVClient_Download(t *testing.T) {
 
 func TestWebDAVClient_Exists(t *testing.T) {
 	server := mockWebDAVServer(t)
-	
+
 	client, err := NewWebDAVClient(server.URL)
 	if err != nil {
 		t.Fatalf("failed to create WebDAV client: %v", err)
@@ -268,7 +268,7 @@ func TestWebDAVClient_Exists(t *testing.T) {
 
 func TestWebDAVClient_Delete(t *testing.T) {
 	server := mockWebDAVServer(t)
-	
+
 	client, err := NewWebDAVClient(server.URL)
 	if err != nil {
 		t.Fatalf("failed to create WebDAV client: %v", err)
@@ -301,32 +301,32 @@ func TestWebDAVClient_Delete(t *testing.T) {
 
 func TestParseWebDAVURL(t *testing.T) {
 	tests := []struct {
-		name           string
-		url            string
+		name             string
+		url              string
 		expectedEndpoint string
-		expectedPath   string
-		expectError    bool
+		expectedPath     string
+		expectError      bool
 	}{
 		{
-			name:           "webdav URL with credentials",
-			url:            "webdav://user:pass@example.com/path/to/file",
+			name:             "webdav URL with credentials",
+			url:              "webdav://user:pass@example.com/path/to/file",
 			expectedEndpoint: "http://user:pass@example.com",
-			expectedPath:    "/path/to/file",
-			expectError:    false,
+			expectedPath:     "/path/to/file",
+			expectError:      false,
 		},
 		{
-			name:           "webdavs URL",
-			url:            "webdavs://user:pass@example.com/secure/path",
+			name:             "webdavs URL",
+			url:              "webdavs://user:pass@example.com/secure/path",
 			expectedEndpoint: "https://user:pass@example.com",
-			expectedPath:    "/secure/path",
-			expectError:    false,
+			expectedPath:     "/secure/path",
+			expectError:      false,
 		},
 		{
-			name:           "webdav URL without credentials",
-			url:            "webdav://example.com/public/path",
+			name:             "webdav URL without credentials",
+			url:              "webdav://example.com/public/path",
 			expectedEndpoint: "http://example.com",
-			expectedPath:    "/public/path",
-			expectError:    false,
+			expectedPath:     "/public/path",
+			expectError:      false,
 		},
 		{
 			name:        "invalid scheme",
@@ -343,7 +343,7 @@ func TestParseWebDAVURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			endpoint, path, err := parseWebDAVURL(tt.url)
-			
+
 			if tt.expectError {
 				if err == nil {
 					t.Error("expected error, got nil")
@@ -394,7 +394,7 @@ func TestWebDAVOutboundIntegration(t *testing.T) {
 	defer log.SetLevel(log.InfoLevel)
 
 	server := mockWebDAVServer(t)
-	
+
 	// Test URL parsing
 	_, _, err := parseWebDAVURL(server.URL + "/uploads")
 	if err == nil {

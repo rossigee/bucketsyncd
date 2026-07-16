@@ -93,7 +93,7 @@ func TestOutboundFunctionInitialization(t *testing.T) {
 	}
 
 	if outboundConfig.Destination == "" {
-		t.Error("Outbound destination should not be empty")  
+		t.Error("Outbound destination should not be empty")
 	}
 
 	// Test folder and glob pattern extraction

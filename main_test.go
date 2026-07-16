@@ -19,11 +19,11 @@ func TestParseCommandLine(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-		// Reset flags
-		flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-		configFilePath = flag.String("c", "/etc/bucketsyncd/config.yaml", "Configuration file location")
-		showVersion = flag.Bool("version", false, "Show version information")
-		help = flag.Bool("h", false, "Usage information")
+			// Reset flags
+			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+			configFilePath = flag.String("c", "/etc/bucketsyncd/config.yaml", "Configuration file location")
+			showVersion = flag.Bool("version", false, "Show version information")
+			help = flag.Bool("h", false, "Usage information")
 
 			// Set args
 			os.Args = append([]string{"bucketsyncd"}, tt.args...)
