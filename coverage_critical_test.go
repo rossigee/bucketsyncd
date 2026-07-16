@@ -16,10 +16,10 @@ import (
 // TestRetryOperation tests the RetryOperation utility function
 func TestRetryOperation(t *testing.T) {
 	tests := []struct {
-		name      string
-		operation func() error
-		maxRetries int
-		expectErr bool
+		name        string
+		operation   func() error
+		maxRetries  int
+		expectErr   bool
 		expectCalls int
 	}{
 		{
@@ -191,7 +191,7 @@ func TestDownloadRecordContextCancellation(t *testing.T) {
 
 	lf := map[string]interface{}{"test": "value"}
 	in := Inbound{
-		Remote:   "test-remote",
+		Remote:      "test-remote",
 		Destination: "s3://other-bucket",
 	}
 
@@ -294,28 +294,28 @@ func TestParseCommandLineAllFlagsExtended(t *testing.T) {
 	defer func() { os.Args = oldArgs }()
 
 	tests := []struct {
-		name      string
-		args      []string
+		name          string
+		args          []string
 		expectSuccess bool
 	}{
 		{
-			name:      "with_config",
-			args:      []string{"prog", "-c", "/tmp/config.yaml"},
+			name:          "with_config",
+			args:          []string{"prog", "-c", "/tmp/config.yaml"},
 			expectSuccess: true,
 		},
 		{
-			name:      "help_flag",
-			args:      []string{"prog", "-h"},
+			name:          "help_flag",
+			args:          []string{"prog", "-h"},
 			expectSuccess: false,
 		},
 		{
-			name:      "version_flag",
-			args:      []string{"prog", "-version"},
+			name:          "version_flag",
+			args:          []string{"prog", "-version"},
 			expectSuccess: false,
 		},
 		{
-			name:      "no_flags",
-			args:      []string{"prog"},
+			name:          "no_flags",
+			args:          []string{"prog"},
 			expectSuccess: false,
 		},
 	}
