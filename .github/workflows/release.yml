@@ -11,7 +11,7 @@ env:
    APP_NAME: 'bucketsyncd'
    MAINTAINER: 'rossigee'
    DESC: 'Bucket synchronisation service for automatic file sync'
-   GO_VERSION: '1.26.2'
+   GO_VERSION: '1.26.5'
    REGISTRY: ghcr.io
    IMAGE_NAME: ${{ github.repository }}
 
