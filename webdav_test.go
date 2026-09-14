@@ -182,6 +182,43 @@ func TestWebDAVClient_NewWebDAVClient(t *testing.T) {
 	}
 }
 
+func TestWebDAVClient_NewWebDAVClient_SchemeConversion(t *testing.T) {
+	server := mockWebDAVServer(t)
+
+	// webdav:// should be converted to http:// for the underlying gowebdav client
+	webdavURL := strings.Replace(server.URL, "http://", "webdav://", 1)
+	client, err := NewWebDAVClient(webdavURL)
+	if err != nil {
+		t.Fatalf("NewWebDAVClient(webdav://) failed: %v", err)
+	}
+
+	testData := "Scheme conversion test"
+	reader := strings.NewReader(testData)
+	err = client.Upload(reader, "/webdav-scheme-test.txt")
+	if err != nil {
+		t.Errorf("upload via webdav:// URL failed: %v", err)
+	}
+
+	if !client.Exists("/webdav-scheme-test.txt") {
+		t.Error("file uploaded via webdav:// URL does not exist")
+	}
+}
+
+func TestWebDAVClient_NewWebDAVClient_WebDAVSScheme(t *testing.T) {
+	server := mockWebDAVServer(t)
+
+	// webdavs:// should be converted to https:// for the underlying gowebdav client
+	// Client creation should succeed; actual HTTPS requests won't work against HTTP mock server
+	webdavsURL := strings.Replace(server.URL, "http://", "webdavs://", 1)
+	client, err := NewWebDAVClient(webdavsURL)
+	if err != nil {
+		t.Fatalf("NewWebDAVClient(webdavs://) failed: %v", err)
+	}
+	if client == nil {
+		t.Fatal("expected client, got nil")
+	}
+}
+
 func TestWebDAVClient_Upload(t *testing.T) {
 	server := mockWebDAVServer(t)
 
