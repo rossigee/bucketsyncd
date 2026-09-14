@@ -34,9 +34,15 @@ func NewWebDAVClient(urlStr string) (*WebDAVClient, error) {
 		}
 	}
 
+	// Convert webdav/webdavs schemes to http/https for gowebdav
+	scheme := "http"
+	if u.Scheme == "webdavs" {
+		scheme = "https"
+	}
+
 	// Create base URL without credentials for client
 	baseURL := &url.URL{
-		Scheme: u.Scheme,
+		Scheme: scheme,
 		Host:   u.Host,
 		Path:   u.Path,
 	}
