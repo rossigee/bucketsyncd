@@ -65,3 +65,6 @@ temp_*
 
 # Security
 .secrets.baseline
+debian/bucketsyncd.substvars
+debian/debhelper-build-stamp
+debian/files
