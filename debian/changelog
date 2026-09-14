@@ -1,3 +1,16 @@
+bucketsyncd (0.4.4-1) unstable; urgency=medium
+
+  * Fix: convert webdav/webdavs schemes to http/https for gowebdav client
+  * Test: add regression tests for webdav scheme conversion
+
+ -- Ross Golder <ross@golder.org>  Mon, 14 Sep 2026 00:00:00 +0000
+
+bucketsyncd (0.4.3-1) unstable; urgency=medium
+
+  * Dependency updates
+
+ -- Ross Golder <ross@golder.org>  Fri, 16 May 2026 12:00:00 +0000
+
 bucketsyncd (0.4.2-1) unstable; urgency=medium
 
   * Security fix: sanitize notification strings against command injection
