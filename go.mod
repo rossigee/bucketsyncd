@@ -5,7 +5,7 @@ go 1.27
 require (
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/minio/minio-go/v7 v7.3.0
-	github.com/rabbitmq/amqp091-go v1.14.0
+	github.com/rabbitmq/amqp091-go v1.15.0
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sirupsen/logrus v1.10.2
 	github.com/studio-b12/gowebdav v0.13.0
