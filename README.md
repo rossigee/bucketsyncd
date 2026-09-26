@@ -1,7 +1,5 @@
 # Bucket synchronisation service
 
-**Version:** v0.4.0
-
 ## Introduction
 
 This application provides a bucket synchronisation service that provides a way to automatically download files to a local folder as they appear in a remote bucket, or to automatically upload files to a remote bucket or WebDAV server from a local folder as they are written to it.
