@@ -148,3 +148,12 @@ jobs:
           files: |
             dist/binaries/*
             dist/packages/*
+
+      - name: Upload .deb packages to debian-repo
+        uses: rossigee/debian-repo-upload-action@v1
+        with:
+          files: dist/packages/*.deb
+          base-url: https://debs.golder.tech
+          token: ${{ secrets.DEBIAN_REPO_CI_TOKEN }}
+          suite: stable
+          component: main
