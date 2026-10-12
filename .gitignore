@@ -1,6 +1,7 @@
 # Build outputs
 build/
 dist/
+vendor/
 ./bucketsyncd
 bucketsyncd
 bucketsyncd.exe
