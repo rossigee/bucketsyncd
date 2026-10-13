@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.7] - 2026-10-13
+
+### Fixed
+- Release security scan now runs gosec through golangci-lint (`--enable-only=gosec --tests=false`). The previous `go install gosec@latest` step failed on Go 1.27.2 with `export data version 5 is greater than maximum supported version 4`, so v0.4.6 was not released
+- Release tests and security scan run before image build and publishing
+
 ## [v0.4.6] - 2026-10-13
 
 ### Fixed

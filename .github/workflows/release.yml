@@ -62,9 +62,10 @@ jobs:
 
       - name: Run security scan
         if: matrix.os == 'linux' && matrix.arch == 'amd64'
-        run: |
-          go install github.com/securego/gosec/v2/cmd/gosec@latest
-          gosec -exclude=G304 ./...
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.14.0
+          args: --no-config --enable-only=gosec --tests=false --timeout=5m
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
