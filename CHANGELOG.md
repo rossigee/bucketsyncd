@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.6] - 2026-10-13
+
+### Fixed
+- `-h` no longer prints a spurious `Error: -c option is required` line, which appeared in the container HEALTHCHECK output
+- Debian package build no longer ignores failures; `make deb` fails on error and moves packages to `dist/packages`
+
+### Changed
+- Minimum Go toolchain is now 1.27.2 (`go.mod`, Dockerfile, CI and release workflows)
+- CI lint uses golangci-lint v2.14.0
+
+### Dependencies
+- `minio-go/v7` v7.3.0 → v7.4.0
+- `klauspost/compress` v1.20.1 → v1.20.3
+- `golang.org/x/crypto` v0.57.0 → v0.58.0
+- `golang.org/x/net` v0.59.0 → v0.61.0
+- `golang.org/x/sys` v0.48.0 → v0.49.0
+- `golang.org/x/text` v0.42.0 → v0.43.0
+
 ## [v0.4.4] - 2026-09-14
 
 ### Fixed

@@ -13,7 +13,7 @@ VERSION=$1
 echo "Updating version to $VERSION..."
 
 # Update main.go
-sed -i "s/version = \".*\"/version = \"$VERSION\"/" main.go
+sed -i -E "s/^(\s*)version\s+= \".*\"/\1version   = \"v$VERSION\"/" main.go
 
 # Update Makefile
 sed -i "s/VERSION := .*/VERSION := $VERSION/" Makefile

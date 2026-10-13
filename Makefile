@@ -1,5 +1,5 @@
 BINARY_NAME := bucketsyncd
-VERSION := 0.4.4
+VERSION := 0.4.6
 
 LDFLAGS=-ldflags "-X main.version=$(VERSION)"
 
@@ -30,7 +30,9 @@ fmt-check:
 
 .PHONY: deb
 deb:
-	dpkg-buildpackage -b --no-sign || (echo "Build completed with warnings"; exit 0)
+	dpkg-buildpackage -b --no-sign
+	mkdir -p dist/packages
+	mv ../bucketsyncd_*.deb ../bucketsyncd-dbgsym_*.ddeb dist/packages/
 
 .PHONY: clean
 clean:

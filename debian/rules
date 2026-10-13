@@ -4,8 +4,3 @@
 	dh $@
 
 override_dh_dwz:
-
-override_dh_builddeb:
-	mkdir -p dist/packages
-	dh_builddeb --destdir=dist/packages
-	mv *.ddeb dist/packages/ 2>/dev/null || true
