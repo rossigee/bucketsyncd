@@ -64,7 +64,7 @@ func parseCommandLine() bool {
 		return false
 	}
 
-	if *configFilePath == "" {
+	if *configFilePath == "" && !*help {
 		fmt.Println("Error: -c option is required")
 	}
 	if *help || *configFilePath == "" {
