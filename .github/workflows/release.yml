@@ -16,7 +16,7 @@ env:
    IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  release:
+  build:
     runs-on: ${{ matrix.runner }}
 
     strategy:
@@ -30,8 +30,7 @@ jobs:
             runner: ubuntu-24.04-arm
 
     permissions:
-      contents: write
-      packages: write
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -67,6 +66,65 @@ jobs:
           version: v2.14.0
           args: --no-config --enable-only=gosec --tests=false --timeout=5m
 
+      - name: Install build dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential debhelper
+
+      - name: Build package
+        run: make deb
+
+      - name: Build release binaries
+        if: matrix.arch == 'amd64'
+        run: |
+          mkdir -p dist/binaries
+          VERSION=${GITHUB_REF_NAME#v}
+          LDFLAGS="-w -s -X main.version=$VERSION -X main.commit=$(git rev-parse --short HEAD)"
+
+          GOOS=linux GOARCH=amd64 go build -ldflags="$LDFLAGS" -o dist/binaries/bucketsyncd-linux-amd64 .
+          GOOS=linux GOARCH=arm64 go build -ldflags="$LDFLAGS" -o dist/binaries/bucketsyncd-linux-arm64 .
+          GOOS=darwin GOARCH=amd64 go build -ldflags="$LDFLAGS" -o dist/binaries/bucketsyncd-darwin-amd64 .
+          GOOS=darwin GOARCH=arm64 go build -ldflags="$LDFLAGS" -o dist/binaries/bucketsyncd-darwin-arm64 .
+
+          cd dist/binaries && sha256sum * > checksums.txt
+
+      - name: Upload binaries
+        if: matrix.arch == 'amd64'
+        uses: actions/upload-artifact@v7
+        with:
+          name: binaries
+          path: dist/binaries/*
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: packages-${{ matrix.arch }}
+          path: dist/packages/*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Download binaries
+        uses: actions/download-artifact@v8
+        with:
+          name: binaries
+          path: dist/binaries
+
+      - name: Download packages
+        uses: actions/download-artifact@v8
+        with:
+          pattern: packages-*
+          merge-multiple: true
+          path: dist/packages
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
 
@@ -74,12 +132,6 @@ jobs:
         uses: docker/setup-buildx-action@v4
         with:
           driver-opts: network=host
-
-      - name: Install build dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential debhelper
-
-      - name: Build package
-        run: make deb
 
       - name: Login to Container Registry
         uses: docker/login-action@v4
@@ -125,19 +177,6 @@ jobs:
             echo "## Release ${{ github.ref_name }}" > CHANGELOG.md
             echo "bucketsyncd CLI tool" >> CHANGELOG.md
           fi
-
-      - name: Build release binaries
-        run: |
-          mkdir -p dist/binaries
-          VERSION=${GITHUB_REF_NAME#v}
-          LDFLAGS="-w -s -X main.version=$VERSION -X main.commit=$(git rev-parse --short HEAD)"
-
-          GOOS=linux GOARCH=amd64 go build -ldflags="$LDFLAGS" -o dist/binaries/bucketsyncd-linux-amd64 .
-          GOOS=linux GOARCH=arm64 go build -ldflags="$LDFLAGS" -o dist/binaries/bucketsyncd-linux-arm64 .
-          GOOS=darwin GOARCH=amd64 go build -ldflags="$LDFLAGS" -o dist/binaries/bucketsyncd-darwin-amd64 .
-          GOOS=darwin GOARCH=arm64 go build -ldflags="$LDFLAGS" -o dist/binaries/bucketsyncd-darwin-arm64 .
-
-          cd dist/binaries && sha256sum * > checksums.txt
 
       - name: Create Release
         uses: softprops/action-gh-release@v3
