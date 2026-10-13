@@ -1,3 +1,11 @@
+bucketsyncd (0.4.6-1) unstable; urgency=medium
+
+  * Build: Go 1.27.2 and golangci-lint v2.14.0
+  * Fix: -h no longer prints a spurious "-c option is required" error
+  * Fix: deb build failures are no longer ignored; packages are moved to dist/packages
+
+ -- Ross Golder <ross@golder.org>  Tue, 13 Oct 2026 00:00:00 +0000
+
 bucketsyncd (0.4.4-1) unstable; urgency=medium
 
   * Fix: convert webdav/webdavs schemes to http/https for gowebdav client
