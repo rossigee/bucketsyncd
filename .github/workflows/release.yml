@@ -55,6 +55,17 @@ jobs:
             ${{ runner.os }}-go-${{ env.GO_VERSION }}-
             ${{ runner.os }}-go-
 
+      - name: Run tests with coverage
+        run: |
+          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} \
+            go test -v -race -coverprofile=coverage.out -covermode=atomic
+
+      - name: Run security scan
+        if: matrix.os == 'linux' && matrix.arch == 'amd64'
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          gosec -exclude=G304 ./...
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
 
@@ -68,18 +79,6 @@ jobs:
 
       - name: Build package
         run: make deb
-
-      - name: Run tests with coverage
-        run: |
-          GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} \
-            go test -v -race -coverprofile=coverage.out -covermode=atomic
-
-      - name: Run security scan
-        if: matrix.os == 'linux' && matrix.arch == 'amd64'
-        run: |
-          go install github.com/securego/gosec/v2/cmd/gosec@latest
-          gosec -exclude=G304 ./...
-
 
       - name: Login to Container Registry
         uses: docker/login-action@v4
