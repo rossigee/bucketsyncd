@@ -309,9 +309,15 @@ func downloadRecord(ctx context.Context, lf log.Fields, bucketName, key string, 
 }
 
 func inboundClose() {
-	for _, c := range connections {
+	for i, c := range connections {
+		if c == nil || c.IsClosed() {
+			continue
+		}
 		if err := c.Close(); err != nil {
-			log.Errorf("unable to close AMQP connection: %s", err)
+			log.Errorf("unable to close AMQP connection %d: %s", i, err)
+		} else {
+			log.Debugf("closed AMQP connection %d", i)
 		}
 	}
+	connections = nil
 }
