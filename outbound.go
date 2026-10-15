@@ -257,3 +257,11 @@ func outbound(o Outbound) {
 		return
 	}
 }
+
+func outboundClose() {
+	for _, w := range watchers {
+		if err := w.Close(); err != nil {
+			log.Errorf("unable to close watcher: %s", err)
+		}
+	}
+}
