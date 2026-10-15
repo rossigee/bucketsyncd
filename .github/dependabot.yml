@@ -1,0 +1,36 @@
+version: 2
+updates:
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "03:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - rossigee
+    assignees:
+      - rossigee
+    labels:
+      - dependencies
+      - ci
+
+  # Go dependencies
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "03:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - rossigee
+    assignees:
+      - rossigee
+    labels:
+      - dependencies
+      - go
+    allow:
+      - dependency-type: direct
+      - dependency-type: indirect

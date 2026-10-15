@@ -1,13 +1,16 @@
+// Package main provides the bucket synchronisation service.
 package main
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
+	"sync"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 var config Config
+var configMutex sync.RWMutex
 
 type Remote struct {
 	Name      string `yaml:"name"`
@@ -27,30 +30,35 @@ type Inbound struct {
 }
 
 type Outbound struct {
-	Name        string `yaml:"name"`
-	Description string `yaml:"description"`
-	Sensitive   bool   `yaml:"sensitive"`
-	Source      string `yaml:"source"`
-	Destination string `yaml:"destination"`
-	ProcessWith string `yaml:"process_with,omitempty"`
+	Name           string   `yaml:"name"`
+	Description    string   `yaml:"description"`
+	Sensitive      bool     `yaml:"sensitive"`
+	Source         string   `yaml:"source"`
+	Destination    string   `yaml:"destination"`
+	IgnorePatterns []string `yaml:"ignore_patterns,omitempty"`
+	ProcessWith    string   `yaml:"process_with,omitempty"`
 }
 
 type Config struct {
-	LogLevel string     `yaml:"log_level"`
-	LogJSON  bool       `yaml:"log_json"`
-	Outbound []Outbound `yaml:"outbound"`
-	Inbound  []Inbound  `yaml:"inbound"`
-	Remotes  []Remote   `yaml:"remotes"`
+	LogLevel            string     `yaml:"log_level"`
+	LogJSON             bool       `yaml:"log_json"`
+	EnableNotifications bool       `yaml:"enable_notifications"`
+	Outbound            []Outbound `yaml:"outbound"`
+	Inbound             []Inbound  `yaml:"inbound"`
+	Remotes             []Remote   `yaml:"remotes"`
 }
 
 func readConfig(filename string) error {
 	// Read YAML config file
 	fullpath, _ := filepath.Abs(filename)
-	yamlFile, err := ioutil.ReadFile(fullpath)
+	// #nosec G304 - This is intentional file reading based on user input
+	yamlFile, err := os.ReadFile(fullpath)
 	if err != nil {
 		return err
 	}
+	configMutex.Lock()
 	err = yaml.Unmarshal(yamlFile, &config)
+	configMutex.Unlock()
 	if err != nil {
 		return err
 	}

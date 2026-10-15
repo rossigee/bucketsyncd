@@ -1,9 +1,39 @@
-build: linux macos windows
+BINARY_NAME := bucketsyncd
+VERSION := 0.4.7
 
-linux:
-	GOOS=linux GOARCH=amd64 go build -o build/bucketsyncd
-macos:
-	GOOS=darwin GOARCH=amd64 go build -o build/bucketsyncd.app
-windows:
-	GOOS=windows GOARCH=amd64 go build -o build/bucketsyncd.exe
+LDFLAGS=-ldflags "-X main.version=$(VERSION)"
 
+.PHONY: build
+build: clean
+	@[ -d build ] || mkdir -vp build
+	go build -v $(LDFLAGS) -o build/$(BINARY_NAME)
+
+.PHONY: test
+test:
+	go test -v ./...
+
+.PHONY: lint
+lint: fmt-check
+	golangci-lint run
+
+.PHONY: fmt
+fmt:
+	gofmt -s -d .
+
+.PHONY: fmt-check
+fmt-check:
+	@if [ -n "$$(gofmt -s -d .)" ]; then \
+		echo "Code is not formatted properly:"; \
+		gofmt -s -d .; \
+		exit 1; \
+	fi
+
+.PHONY: deb
+deb:
+	dpkg-buildpackage -b --no-sign
+	mkdir -p dist/packages
+	mv ../bucketsyncd_*.deb ../bucketsyncd-dbgsym_*.ddeb dist/packages/
+
+.PHONY: clean
+clean:
+	rm -rf build
