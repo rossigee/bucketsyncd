@@ -5,13 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/url"
 	"time"
 
 	"os"
 	"path/filepath"
-	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	log "github.com/sirupsen/logrus"
