@@ -5,6 +5,84 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.7] - 2026-10-13
+
+### Fixed
+- Release security scan now runs gosec through golangci-lint (`--enable-only=gosec --tests=false`). The previous `go install gosec@latest` step failed on Go 1.27.2 with `export data version 5 is greater than maximum supported version 4`, so v0.4.6 was not released
+- Release tests and security scan run before image build and publishing
+
+## [v0.4.6] - 2026-10-13
+
+### Fixed
+- `-h` no longer prints a spurious `Error: -c option is required` line, which appeared in the container HEALTHCHECK output
+- Debian package build no longer ignores failures; `make deb` fails on error and moves packages to `dist/packages`
+
+### Changed
+- Minimum Go toolchain is now 1.27.2 (`go.mod`, Dockerfile, CI and release workflows)
+- CI lint uses golangci-lint v2.14.0
+
+### Dependencies
+- `minio-go/v7` v7.3.0 → v7.4.0
+- `klauspost/compress` v1.20.1 → v1.20.3
+- `golang.org/x/crypto` v0.57.0 → v0.58.0
+- `golang.org/x/net` v0.59.0 → v0.61.0
+- `golang.org/x/sys` v0.48.0 → v0.49.0
+- `golang.org/x/text` v0.42.0 → v0.43.0
+
+## [v0.4.4] - 2026-09-14
+
+### Fixed
+- `NewWebDAVClient` now converts `webdav`/`webdavs` URL schemes to `http`/`https` for the underlying `gowebdav` client, which does not support the `webdav`/`webdavs` schemes directly
+
+## [v0.4.2] - 2026-05-16
+
+### Fixed
+- Outbound watcher goroutine now survives transient errors (file-open failures, missing credentials, MinIO client creation errors) via `continue` instead of `return`, preventing permanent loss of file-watch coverage
+- Inbound AMQP reconnection loop now correctly exits the inner select loop on channel close via labeled `break`, eliminating a busy-spin that prevented reconnection
+- `defer` inside event/message processing loops replaced with explicit resource cleanup, fixing file-handle and context leaks that accumulated until goroutine exit
+- Missing `continue` after `url.Parse` failure in outbound handler (previously continued with a nil/partial URL)
+- Watcher slice changed to pointer type (`[]*fsnotify.Watcher`) enabling test teardown to properly stop goroutines and eliminate data races
+
+### Security
+- Notification messages and titles are now sanitized before interpolation into macOS AppleScript and Windows PowerShell command strings, preventing command injection via crafted filenames
+- Removed redundant `username` and `password` fields from `WebDAVClient` struct — credentials already held by the gowebdav client, extra copies increased in-memory exposure
+
+### Changed
+- Exponential backoff in retry helpers uses multiplication instead of `int → uint` bit-shift to avoid CWE-190 integer overflow (gosec G115)
+- Noisy info-level log loop that printed all remote endpoints on every S3 event removed
+
+### Dependencies
+- `fsnotify` v1.9.0 → v1.10.1
+- `klauspost/compress` v1.18.5 → v1.18.6
+- `golang.org/x/crypto` v0.50.0 → v0.51.0
+- `golang.org/x/net` v0.53.0 → v0.54.0
+- `golang.org/x/sys` v0.43.0 → v0.44.0
+- `golang.org/x/text` v0.36.0 → v0.37.0
+
+## [v0.4.0] - 2026-04-29
+
+### Added
+- Configurable ignore patterns for outbound configurations to skip temporary/partial files
+- Build information logging (version, build time, git commit) on startup
+- Service account support for enhanced security with MinIO
+- Comprehensive test coverage expansion with new unit tests
+- Improved notification messages with file details and empty message prevention
+
+### Changed
+- Notifications now include full file paths and prevent empty notifications
+- File watcher improved to handle Create/Write events and avoid premature watcher closure
+- Endpoint matching fixed to use u.Host instead of u.Hostname() for ports
+- Error handling enhanced with better logging and retry mechanisms
+
+### Fixed
+- Watcher lifecycle management to prevent event loss
+- Configurable file filtering to ignore unwanted files
+- Notification system robustness
+
+### Security
+- Service account credentials with restricted permissions
+- Improved secure credential handling
+
 ## [v0.3.2] - 2026-04-29
 
 ### Fixed

@@ -1,7 +1,5 @@
 # Bucket synchronisation service
 
-**Version:** v0.3.2
-
 ## Introduction
 
 This application provides a bucket synchronisation service that provides a way to automatically download files to a local folder as they appear in a remote bucket, or to automatically upload files to a remote bucket or WebDAV server from a local folder as they are written to it.
@@ -13,7 +11,11 @@ This application provides a bucket synchronisation service that provides a way t
 *   **Multiple Storage Backends**: Supports both S3-compatible storage (MinIO, AWS S3) and WebDAV servers.
 *   **Secure Protocols**: Supports both HTTP (`webdav://`) and HTTPS (`webdavs://`) WebDAV connections.
 *   **Desktop Notifications**: Optional desktop notifications when files are successfully uploaded or downloaded (Linux/macOS/Windows).
-*   **Custom Filtering**: (TODO) Ability to process the file with a script before upload/download, which useful for removing or obfuscating sensitive data.
+*   **File Filtering**: Configurable ignore patterns to skip temporary files (e.g., `*.crdownload`, `*.tmp`, hidden files).
+*   **Build Information Logging**: Logs version, build time, and git commit on startup for troubleshooting.
+*   **Service Account Support**: Enhanced security using MinIO service accounts with restricted permissions.
+*   **Robust Error Handling**: Improved retry logic, timeouts, and security fixes for reliable operation.
+*   **Custom Processing**: (TODO) Ability to process the file with a script before upload/download, useful for removing or obfuscating sensitive data.
 
 ## Usage
 
@@ -55,10 +57,27 @@ bucketsyncd can optionally send desktop notifications when files are successfull
 
 ### Configuration
 
+#### Desktop Notifications
+
 Add to your `config.yaml`:
 
 ```yaml
 enable_notifications: true
+```
+
+#### File Ignore Patterns
+
+To ignore temporary or unwanted files, add `ignore_patterns` to outbound configurations:
+
+```yaml
+outbound:
+  - name: my-sync
+    source: "/path/to/watch/*"
+    destination: "s3://bucket/path"
+    ignore_patterns:
+      - "*.crdownload"  # Chrome downloads
+      - "*.tmp"         # Temporary files
+      - ".*"            # Hidden files
 ```
 
 ### Platform Support

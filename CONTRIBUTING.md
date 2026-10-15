@@ -13,7 +13,7 @@ Thank you for your interest in contributing to the bucket synchronisation servic
 ## Development Setup
 
 ### Prerequisites
-- Go 1.25 or later
+- Go 1.27.2 or later
 - Git
 - Make
 - Docker (optional, for containerized development)

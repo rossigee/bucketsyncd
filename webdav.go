@@ -7,16 +7,14 @@ import (
 	"path"
 	"strings"
 
-	"github.com/studio-b12/gowebdav"
 	log "github.com/sirupsen/logrus"
+	"github.com/studio-b12/gowebdav"
 )
 
 // WebDAVClient wraps the gowebdav client with additional functionality
 type WebDAVClient struct {
-	client   *gowebdav.Client
-	baseURL  *url.URL
-	username string
-	password string
+	client  *gowebdav.Client
+	baseURL *url.URL
 }
 
 // NewWebDAVClient creates a new WebDAV client from a URL
@@ -36,9 +34,15 @@ func NewWebDAVClient(urlStr string) (*WebDAVClient, error) {
 		}
 	}
 
+	// Convert webdav/webdavs schemes to http/https for gowebdav
+	scheme := "http"
+	if u.Scheme == "webdavs" {
+		scheme = "https"
+	}
+
 	// Create base URL without credentials for client
 	baseURL := &url.URL{
-		Scheme: u.Scheme,
+		Scheme: scheme,
 		Host:   u.Host,
 		Path:   u.Path,
 	}
@@ -46,10 +50,8 @@ func NewWebDAVClient(urlStr string) (*WebDAVClient, error) {
 	client := gowebdav.NewClient(baseURL.String(), username, password)
 
 	return &WebDAVClient{
-		client:   client,
-		baseURL:  baseURL,
-		username: username,
-		password: password,
+		client:  client,
+		baseURL: baseURL,
 	}, nil
 }
 

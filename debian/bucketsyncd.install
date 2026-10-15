@@ -1,0 +1,4 @@
+build/* usr/bin/
+README.md usr/share/doc/bucketsyncd/
+CHANGELOG.md usr/share/doc/bucketsyncd/
+example/* usr/share/doc/bucketsyncd/examples/

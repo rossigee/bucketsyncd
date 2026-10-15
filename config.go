@@ -4,11 +4,13 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 )
 
 var config Config
+var configMutex sync.RWMutex
 
 type Remote struct {
 	Name      string `yaml:"name"`
@@ -28,12 +30,13 @@ type Inbound struct {
 }
 
 type Outbound struct {
-	Name        string `yaml:"name"`
-	Description string `yaml:"description"`
-	Sensitive   bool   `yaml:"sensitive"`
-	Source      string `yaml:"source"`
-	Destination string `yaml:"destination"`
-	ProcessWith string `yaml:"process_with,omitempty"`
+	Name           string   `yaml:"name"`
+	Description    string   `yaml:"description"`
+	Sensitive      bool     `yaml:"sensitive"`
+	Source         string   `yaml:"source"`
+	Destination    string   `yaml:"destination"`
+	IgnorePatterns []string `yaml:"ignore_patterns,omitempty"`
+	ProcessWith    string   `yaml:"process_with,omitempty"`
 }
 
 type Config struct {
@@ -53,7 +56,9 @@ func readConfig(filename string) error {
 	if err != nil {
 		return err
 	}
+	configMutex.Lock()
 	err = yaml.Unmarshal(yamlFile, &config)
+	configMutex.Unlock()
 	if err != nil {
 		return err
 	}

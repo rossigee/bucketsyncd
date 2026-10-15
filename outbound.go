@@ -20,8 +20,6 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-
-
 var watchers []*fsnotify.Watcher
 
 // nolint:gocognit,funlen // This function handles the main file watching and upload logic
@@ -36,6 +34,7 @@ func outbound(o Outbound) {
 		log.WithFields(lf).Error(err)
 		return
 	}
+
 	watchers = append(watchers, watcher)
 
 	// Extract folder to watch, and file glob to filter on
@@ -55,17 +54,11 @@ func outbound(o Outbound) {
 					return
 				}
 
-				log.WithFields(lf).WithFields(log.Fields{
-					"name": event.Name,
-					"op":   event.Op,
-				}).Debug("Event")
+				log.Info(fmt.Sprintf("Event received: name=%s op=%d", event.Name, event.Op))
 
-				// Ignore events that are not Write or Create
+				// Ignore non-Write/Create events
 				if event.Op&(fsnotify.Write|fsnotify.Create) == 0 {
-					log.WithFields(lf).WithFields(log.Fields{
-						"name": event.Name,
-						"op":   event.Op,
-					}).Debug("Ignoring unimportant event type")
+					log.Info(fmt.Sprintf("Ignoring event: name=%s op=%d", event.Name, event.Op))
 					continue
 				}
 
@@ -79,58 +72,41 @@ func outbound(o Outbound) {
 					continue
 				}
 
+				// Skip ignored files
+				ignored := false
+				for _, pattern := range o.IgnorePatterns {
+					if glob.Glob(pattern, filename) {
+						ignored = true
+						break
+					}
+				}
+				if ignored {
+					log.WithFields(lf).WithFields(log.Fields{
+						"name": event.Name,
+						"op":   event.Op,
+					}).Debug("Ignoring file due to ignore pattern")
+					continue
+				}
+
 				// Open the file and prepare to read it
+				// #nosec G304 - intentional: path comes from fsnotify watching a configured directory
 				f, err := os.Open(event.Name)
 				if err != nil {
 					log.WithFields(lf).WithFields(log.Fields{
 						"name": event.Name,
 						"op":   event.Op,
-					}).Error(fmt.Printf("failed to open file %q, %v", filename, err))
-					return
+					}).Error("failed to open file: ", err)
+					continue
 				}
-				defer func() {
-					if err := f.Close(); err != nil {
-						log.WithFields(lf).Error("failed to close file: ", err)
-					}
-				}()
-
-				// [IGNORE THIS FOR NOW] If we need to stream to a processor, do so here
-				// var p io.Writer = bufio.NewWriterSize(f, 1024)
-				// if o.ProcessWith != "" {
-				// 	cmd := exec.Command(o.ProcessWith)
-				// 	cmd.Stdin = f
-				// 	//stdout, err := cmd.Output()
-				// 	cmd.Stdout = p
-				// 	err := cmd.Start()
-				// 	if err != nil {
-				// 		// Handle error
-				// 		log.WithFields(lf).WithFields(log.Fields{
-				// 			"name":   event.Name,
-				// 			"op":     event.Op,
-				// 			"parser": o.ProcessWith,
-				// 		}).Error("Parser error: ", err)
-				// 		return
-				// 	}
-				// 	// Report success
-				// 	log.WithFields(lf).WithFields(log.Fields{
-				// 		"name":   event.Name,
-				// 		"op":     event.Op,
-				// 		"parser": o.ProcessWith,
-				// 	}).Error("Parsed successfully")
-
-				// } else {
-				// 	// Pass through unprocessed
-				// 	p = f
-				// }
-				// p.Flush()
-
-				// Create a buffered reader
 
 				// Determine destination type and handle accordingly
 				u, err := url.Parse(o.Destination)
 				if err != nil {
+					if closeErr := f.Close(); closeErr != nil {
+						log.WithFields(lf).Error("failed to close file: ", closeErr)
+					}
 					log.WithFields(lf).Error("failed to parse destination URL: ", err)
-					return
+					continue
 				}
 
 				// Check if this is a WebDAV destination
@@ -138,25 +114,31 @@ func outbound(o Outbound) {
 					// Handle WebDAV upload
 					webdavClient, err := NewWebDAVClient(o.Destination)
 					if err != nil {
+						if closeErr := f.Close(); closeErr != nil {
+							log.WithFields(lf).Error("failed to close file: ", closeErr)
+						}
 						log.WithFields(lf).Error("failed to create WebDAV client: ", err)
-						return
+						continue
 					}
 
 					// Determine remote path
 					remotePath := strings.TrimSuffix(u.Path, "/") + "/" + filename
-					
+
 					log.WithFields(lf).WithFields(log.Fields{
 						"name":        event.Name,
 						"remote_path": remotePath,
 					}).Debug("uploading to WebDAV")
 
 					err = webdavClient.Upload(f, remotePath)
+					if closeErr := f.Close(); closeErr != nil {
+						log.WithFields(lf).Error("failed to close file: ", closeErr)
+					}
 					if err != nil {
 						log.WithFields(lf).WithFields(log.Fields{
 							"name":        event.Name,
 							"remote_path": remotePath,
 						}).Error("failed to upload file to WebDAV: ", err)
-						return
+						continue
 					}
 
 					log.WithFields(lf).WithFields(log.Fields{
@@ -164,16 +146,20 @@ func outbound(o Outbound) {
 						"remote_path": remotePath,
 					}).Info("successfully uploaded file to WebDAV")
 
-					SendNotification("bucketsyncd", fmt.Sprintf("Uploaded %s to WebDAV", filename))
+					message := fmt.Sprintf("Uploaded %s to %s", filename, o.Destination)
+					SendNotification("bucketsyncd", message)
 
 				} else {
-				// Handle S3 upload (existing logic)
-				endpoint := u.Host
-				tokens := strings.Split(u.Path, "/")
+					// Handle S3 upload
+					endpoint := u.Host
+					tokens := strings.Split(u.Path, "/")
 					const minTokens = 2
 					if len(tokens) < minTokens {
+						if closeErr := f.Close(); closeErr != nil {
+							log.WithFields(lf).Error("failed to close file: ", closeErr)
+						}
 						log.WithFields(lf).Error("Invalid S3 path: ", u.Path)
-						return
+						continue
 					}
 					awsBucket := tokens[1]
 					awsFileKey := strings.Join(tokens[2:], "/") + "/" + filename
@@ -187,34 +173,45 @@ func outbound(o Outbound) {
 					// Determine remote to use to create a new MinIO client
 					creds := credentials.Credentials{}
 					credsFound := false
+					configMutex.RLock()
 					for _, remote := range config.Remotes {
 						if remote.Endpoint == endpoint {
 							creds = *credentials.NewStaticV4(remote.AccessKey, remote.SecretKey, "")
 							credsFound = true
 						}
 					}
+					configMutex.RUnlock()
 					if !credsFound {
+						if closeErr := f.Close(); closeErr != nil {
+							log.WithFields(lf).Error("failed to close file: ", closeErr)
+						}
 						log.WithFields(lf).Error("No S3 credentials found for endpoint: ", endpoint)
-						return
+						continue
 					}
 					mc, err := minio.New(endpoint, &minio.Options{
 						Creds:  &creds,
 						Secure: true,
 					})
 					if err != nil {
+						if closeErr := f.Close(); closeErr != nil {
+							log.WithFields(lf).Error("failed to close file: ", closeErr)
+						}
 						log.WithFields(lf).Error("failed to create MinIO client: ", err)
-						return
+						continue
 					}
 
 					// Push object to S3 bucket
 					fs, err := f.Stat()
 					if err != nil {
+						if closeErr := f.Close(); closeErr != nil {
+							log.WithFields(lf).Error("failed to close file: ", closeErr)
+						}
 						log.WithFields(lf).WithFields(log.Fields{
 							"name":       event.Name,
 							"awsBucket":  awsBucket,
 							"awsFileKey": awsFileKey,
 						}).Error("unable to query file size: ", err)
-						return
+						continue
 					}
 					err = RetryOperation(func() error {
 						ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -222,13 +219,16 @@ func outbound(o Outbound) {
 						_, err := mc.PutObject(ctx, awsBucket, awsFileKey, f, fs.Size(), minio.PutObjectOptions{})
 						return err
 					}, 3)
+					if closeErr := f.Close(); closeErr != nil {
+						log.WithFields(lf).Error("failed to close file: ", closeErr)
+					}
 					if err != nil {
 						log.WithFields(lf).WithFields(log.Fields{
 							"name":       event.Name,
 							"awsBucket":  awsBucket,
 							"awsFileKey": awsFileKey,
 						}).Error("failed to upload file to S3 after retries: ", err)
-						return
+						continue
 					}
 					log.WithFields(lf).WithFields(log.Fields{
 						"name":       event.Name,
@@ -237,7 +237,8 @@ func outbound(o Outbound) {
 						"size":       fs.Size(),
 					}).Info("uploaded to S3")
 
-					SendNotification("bucketsyncd", fmt.Sprintf("Uploaded %s to S3", filename))
+					message := fmt.Sprintf("Uploaded %s to %s", event.Name, o.Destination)
+					SendNotification("bucketsyncd", message)
 				}
 
 			case err, ok := <-watcher.Errors:
