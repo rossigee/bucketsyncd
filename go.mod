@@ -4,7 +4,7 @@ go 1.27.2
 
 require (
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/minio/minio-go/v7 v7.4.0
+	github.com/minio/minio-go/v7 v7.4.1
 	github.com/rabbitmq/amqp091-go v1.15.0
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sirupsen/logrus v1.10.2
