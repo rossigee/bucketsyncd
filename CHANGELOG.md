@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Minimum Go toolchain is now 1.27.3 (`go.mod`, Dockerfile, CI and release workflows)
+- CI and release lint use golangci-lint v2.15.0
+
+### Dependencies
+- `minio-go/v7` v7.4.0 → v7.4.1
+- `rabbitmq/amqp091-go` v1.15.0 → v1.16.0
+- `klauspost/cpuid/v2` v2.4.0 → v2.4.2
+- `philhofer/fwd` v1.2.0 → v1.2.1
+- `go.yaml.in/yaml/v3` v3.0.5 → v3.0.6
+- `golang.org/x/net` v0.61.0 → v0.62.0
+
 ## [v0.4.7] - 2026-10-13
 
 ### Fixed
