@@ -15,7 +15,7 @@ permissions:
   packages: write
 
 env:
-  GO_VERSION: '1.27.2'
+  GO_VERSION: '1.27.3'
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -83,7 +83,7 @@ jobs:
     - name: Run golangci-lint
       uses: golangci/golangci-lint-action@v9
       with:
-        version: v2.14.0
+        version: v2.15.0
         args: --no-config --timeout=5m
 
   security:
