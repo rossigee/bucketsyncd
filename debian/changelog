@@ -1,3 +1,10 @@
+bucketsyncd (0.4.8-1) unstable; urgency=medium
+
+  * Build: Go 1.27.3 and golangci-lint v2.15.0
+  * Deps: minio-go/v7, amqp091-go, klauspost/cpuid, philhofer/fwd, yaml.v3, golang.org/x/net
+
+ -- Ross Golder <ross@golder.org>  Wed, 04 Nov 2026 06:11:10 +0700
+
 bucketsyncd (0.4.7-1) unstable; urgency=medium
 
   * Fix: release security scan runs gosec via golangci-lint; go install gosec failed on Go 1.27.2 export data
