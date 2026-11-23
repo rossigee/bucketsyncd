@@ -1,3 +1,11 @@
+bucketsyncd (0.4.9-1) unstable; urgency=medium
+
+  * Deps: amqp091-go v1.17.0, klauspost/compress v1.20.5, golang.org/x/crypto v0.59.0,
+    golang.org/x/net v0.63.0, golang.org/x/sys v0.50.0, golang.org/x/text v0.44.0,
+    gopkg.in/ini.v1 v1.68.0
+
+ -- Ross Golder <ross@golder.org>  Mon, 23 Nov 2026 13:57:26 +0700
+
 bucketsyncd (0.4.8-1) unstable; urgency=medium
 
   * Build: Go 1.27.3 and golangci-lint v2.15.0

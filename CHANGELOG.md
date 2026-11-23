@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.9] - 2026-11-23
+
+### Dependencies
+- `rabbitmq/amqp091-go` v1.16.0 → v1.17.0
+- `klauspost/compress` v1.20.3 → v1.20.5
+- `golang.org/x/crypto` v0.58.0 → v0.59.0
+- `golang.org/x/net` v0.62.0 → v0.63.0
+- `golang.org/x/sys` v0.49.0 → v0.50.0
+- `golang.org/x/text` v0.43.0 → v0.44.0
+- `gopkg.in/ini.v1` v1.67.3 → v1.68.0
+
 ## [v0.4.8] - 2026-11-04
 
 ### Changed
